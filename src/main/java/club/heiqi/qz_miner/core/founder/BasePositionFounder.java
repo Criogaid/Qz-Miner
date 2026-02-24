@@ -96,15 +96,11 @@ public class BasePositionFounder extends Pauseable {
             // LOG.info("重复的点");
             return false;
         }
-        if (!isSafeToReadAt(pos)) {
-            return false;
-        }
         Block block = getBlockAt(pos);
         if (block.equals(Blocks.air) || block.getMaterial().isLiquid() || block.equals(Blocks.bedrock)) {
             return false;
         }
         Vector3i playerPos = new Vector3i((int) Math.floor(player.posX), (int) Math.floor(player.posY), (int) Math.floor(player.posZ));
-        int blockMeta = getBlockMetaAt(pos);
 
         // 玩家脚下的一个方块不能被挖掘
         if (pos.x == playerPos.x && pos.y == (playerPos.y - 1) && pos.z == playerPos.z) {
@@ -113,6 +109,7 @@ public class BasePositionFounder extends Pauseable {
 
         // 如果是创造模式全都能挖掘
         if (player.capabilities.isCreativeMode) return true;
+        int blockMeta = getBlockMetaAt(pos);
         return block.canHarvestBlock(player, blockMeta);
     }
 
@@ -120,6 +117,12 @@ public class BasePositionFounder extends Pauseable {
         // LOG.info("添加位置: x: {} y: {} z: {}", pos.x, pos.y, pos.z);
         Vector3i key = new Vector3i(pos);
         if (!this.foundedPositions.add(key)) {
+            return;
+        }
+        // 首个样本点保持历史行为；其余路径统一遵守 blockLimit。
+        if (this.foundedPositions.size() > 1 && this.curCount >= minerConfig.blockLimit) {
+            this.foundedPositions.remove(key);
+            clearDeferredState(key);
             return;
         }
         try {
@@ -168,6 +171,10 @@ public class BasePositionFounder extends Pauseable {
         if (maxPerTick <= 0) {
             return;
         }
+        if (curCount >= minerConfig.blockLimit) {
+            clearAllDeferredState();
+            return;
+        }
         int processed = 0;
         while (processed < maxPerTick) {
             Vector3i deferredPos = deferredPositions.poll();
@@ -184,6 +191,10 @@ public class BasePositionFounder extends Pauseable {
 
             if (checkCanAdd(deferredPos)) {
                 addResult(deferredPos);
+                if (curCount >= minerConfig.blockLimit) {
+                    clearAllDeferredState();
+                    return;
+                }
             } else if (!deferredQueuedPositions.contains(deferredPos)) {
                 clearDeferredState(deferredPos);
             }
@@ -214,13 +225,21 @@ public class BasePositionFounder extends Pauseable {
         if (!isSafeToReadAt(pos)) {
             return Blocks.air;
         }
-        return player.worldObj.getBlock(pos.x, pos.y, pos.z);
+        return getBlockAtUnsafe(pos);
     }
 
     protected int getBlockMetaAt(Vector3i pos) {
         if (!isSafeToReadAt(pos)) {
             return 0;
         }
+        return getBlockMetaAtUnsafe(pos);
+    }
+
+    protected Block getBlockAtUnsafe(Vector3i pos) {
+        return player.worldObj.getBlock(pos.x, pos.y, pos.z);
+    }
+
+    protected int getBlockMetaAtUnsafe(Vector3i pos) {
         return player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
     }
 
@@ -252,5 +271,11 @@ public class BasePositionFounder extends Pauseable {
     private void clearDeferredState(Vector3i pos) {
         deferredQueuedPositions.remove(pos);
         deferredAttempts.remove(pos);
+    }
+
+    private void clearAllDeferredState() {
+        deferredPositions.clear();
+        deferredQueuedPositions.clear();
+        deferredAttempts.clear();
     }
 }
