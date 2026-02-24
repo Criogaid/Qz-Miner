@@ -2,3 +2,8 @@
 plugins {
     id 'com.gtnewhorizons.gtnhconvention'
 }
+
+// Ensure filtered resources (e.g. mcmod.info token expansion) keep UTF-8 content.
+tasks.withType(ProcessResources).configureEach {
+    filteringCharset = 'UTF-8'
+}
