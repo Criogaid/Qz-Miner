@@ -15,10 +15,13 @@ public class InteractOperator extends BaseOperator {
     @Override
     @SubscribeEvent
     public void operatorTask(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.START) return;
         if (!checkCanInteract()) {
             this.unRegistry();
             return;
         }
+
+        processDeferredBeforeConsume();
 
         if (canBreakPositions.isEmpty()) {
             return;

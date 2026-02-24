@@ -21,7 +21,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class BaseOperator {
     public Logger LOG = LogManager.getLogger();
     private static final String SEARCHER_AUDIT_TAG = "[SearcherAudit]";
-    private static final int DEFERRED_CHECK_BUDGET_PER_TICK = 48;
+    protected static final int DEFERRED_CHECK_BUDGET_PER_TICK = 48;
 
     public EntityPlayerMP playerMP;
 
@@ -55,8 +55,7 @@ public class BaseOperator {
             this.unRegistry();
         }
 
-        // 异步阶段延迟的判定请求在主线程限额处理，避免误判并控制卡顿风险。
-        positionFounder.processDeferredPositions(DEFERRED_CHECK_BUDGET_PER_TICK);
+        processDeferredBeforeConsume();
 
         if (canBreakPositions.isEmpty()) {
             return;
@@ -103,6 +102,11 @@ public class BaseOperator {
         }
 
         return true;
+    }
+
+    protected void processDeferredBeforeConsume() {
+        // 异步阶段延迟的判定请求在主线程限额处理，避免误判并控制卡顿风险。
+        positionFounder.processDeferredPositions(DEFERRED_CHECK_BUDGET_PER_TICK);
     }
 
 
