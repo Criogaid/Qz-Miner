@@ -6,6 +6,7 @@ import club.heiqi.qz_miner.MyMod;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Pauseable extends Thread {
+    private final Object pauseLock = new Object();
 
     /**请不要手动操作这个标志位<br>请使用pause()和unPause()方法操作*/
     public AtomicBoolean started =  new AtomicBoolean(false);
@@ -51,15 +52,27 @@ public class Pauseable extends Thread {
         }
         paused.set(false);
         resumed.set(true);
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
     }
 
     /**
      * 如果线程暂停了，就等待直到线程继续运行
      */
     public void waitUntil() {
-        while (paused.get()) {
-            if (Thread.currentThread().isInterrupted()) {
-                return;
+        synchronized (pauseLock) {
+            while (paused.get()) {
+                if (Thread.currentThread().isInterrupted()) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                try {
+                    pauseLock.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
             }
         }
     }
