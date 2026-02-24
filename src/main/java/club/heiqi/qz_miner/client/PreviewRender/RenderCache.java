@@ -13,6 +13,10 @@ import java.nio.IntBuffer;
 
 public class RenderCache {
     public static Logger LOG = LogManager.getLogger();
+    private static final int INITIAL_CAPACITY = 10 * 1024 * 1024; // 10MB
+    private static final int MIN_CAPACITY = INITIAL_CAPACITY;
+    private static final int LOW_USAGE_THRESHOLD_FRAMES = 300;
+    private static final int SHRINK_COOLDOWN_FRAMES = 120;
 
     public int vao;
     public int vbo;
@@ -24,6 +28,10 @@ public class RenderCache {
     // 记录当前分配的缓冲区大小（字节）
     public int vboCapacity = 0;
     public int eboCapacity = 0;
+    private int vboLowUsageFrames = 0;
+    private int eboLowUsageFrames = 0;
+    private int vboShrinkCooldownFrames = 0;
+    private int eboShrinkCooldownFrames = 0;
 
     public RenderCache() {
         // 初始化
@@ -36,8 +44,7 @@ public class RenderCache {
         vbo = GL15.glGenBuffers();
         ebo = GL15.glGenBuffers();
 
-        // 初始分配10MB缓冲区
-        final int INITIAL_CAPACITY = 10 * 1024 * 1024; // 10MB
+        // 初始分配缓冲区
         vboCapacity = INITIAL_CAPACITY;
         eboCapacity = INITIAL_CAPACITY;
 
@@ -79,26 +86,72 @@ public class RenderCache {
         // 检查并扩容VBO
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         int requiredVboSize = vertices.length * 4; // 每个float占4字节
+        if (vboShrinkCooldownFrames > 0) {
+            vboShrinkCooldownFrames--;
+        }
         if (requiredVboSize > vboCapacity) {
             vboCapacity = calculateNewCapacity(requiredVboSize);
             GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vboCapacity, GL15.GL_DYNAMIC_DRAW);
+            vboLowUsageFrames = 0;
+            vboShrinkCooldownFrames = SHRINK_COOLDOWN_FRAMES;
+        } else {
+            if (requiredVboSize < vboCapacity / 4) {
+                vboLowUsageFrames++;
+            } else if (requiredVboSize > vboCapacity / 2) {
+                vboLowUsageFrames = 0;
+            }
+            if (vboShrinkCooldownFrames == 0 && vboLowUsageFrames >= LOW_USAGE_THRESHOLD_FRAMES) {
+                int shrinkTarget = calculateShrinkCapacity(requiredVboSize);
+                if (shrinkTarget < vboCapacity) {
+                    vboCapacity = shrinkTarget;
+                    GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vboCapacity, GL15.GL_DYNAMIC_DRAW);
+                    LOG.info("缩容VBO缓冲完毕，新容量: {}", vboCapacity);
+                }
+                vboLowUsageFrames = 0;
+                vboShrinkCooldownFrames = SHRINK_COOLDOWN_FRAMES;
+            }
         }
-        // 绑定实际数据
-        FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(vertices.length);
-        floatBuffer.put(vertices).flip();
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, floatBuffer, GL15.GL_DYNAMIC_DRAW);
+        // 仅上传数据，不重复重建存储。
+        if (requiredVboSize > 0) {
+            FloatBuffer floatBuffer = BufferUtils.createFloatBuffer(vertices.length);
+            floatBuffer.put(vertices).flip();
+            GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, floatBuffer);
+        }
 
         // 检查并扩容EBO
         GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
         int requiredEboSize = indices.length * 4; // 每个int占4字节
+        if (eboShrinkCooldownFrames > 0) {
+            eboShrinkCooldownFrames--;
+        }
         if (requiredEboSize > eboCapacity) {
             eboCapacity = calculateNewCapacity(requiredEboSize);
             GL15.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, eboCapacity, GL15.GL_DYNAMIC_DRAW);
+            eboLowUsageFrames = 0;
+            eboShrinkCooldownFrames = SHRINK_COOLDOWN_FRAMES;
+        } else {
+            if (requiredEboSize < eboCapacity / 4) {
+                eboLowUsageFrames++;
+            } else if (requiredEboSize > eboCapacity / 2) {
+                eboLowUsageFrames = 0;
+            }
+            if (eboShrinkCooldownFrames == 0 && eboLowUsageFrames >= LOW_USAGE_THRESHOLD_FRAMES) {
+                int shrinkTarget = calculateShrinkCapacity(requiredEboSize);
+                if (shrinkTarget < eboCapacity) {
+                    eboCapacity = shrinkTarget;
+                    GL15.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, eboCapacity, GL15.GL_DYNAMIC_DRAW);
+                    LOG.info("缩容EBO缓冲完毕，新容量: {}", eboCapacity);
+                }
+                eboLowUsageFrames = 0;
+                eboShrinkCooldownFrames = SHRINK_COOLDOWN_FRAMES;
+            }
         }
-        // 绑定实际数据
-        IntBuffer intBuffer = BufferUtils.createIntBuffer(indices.length);
-        intBuffer.put(indices).flip();
-        GL15.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, intBuffer, GL15.GL_DYNAMIC_DRAW);
+        // 仅上传数据，不重复重建存储。
+        if (requiredEboSize > 0) {
+            IntBuffer intBuffer = BufferUtils.createIntBuffer(indices.length);
+            intBuffer.put(indices).flip();
+            GL15.glBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, 0, intBuffer);
+        }
 
         GL30.glBindVertexArray(0);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
@@ -130,11 +183,20 @@ public class RenderCache {
 
     // 计算新的缓冲区容量（当前需求的2倍）
     public int calculateNewCapacity(int requiredSize) {
-        int newCapacity = Math.max(10 * 1024 * 1024, 16); // 最小16字节
+        int newCapacity = Math.max(MIN_CAPACITY, 16); // 最小16字节
         while (newCapacity < requiredSize) {
             newCapacity *= 2; // 每次容量翻倍
         }
         LOG.info("扩容渲染缓冲完毕，新容量: {}", newCapacity);
+        return newCapacity;
+    }
+
+    public int calculateShrinkCapacity(int requiredSize) {
+        int targetSize = Math.max(requiredSize * 2, 16); // 预留一倍增长空间，避免频繁扩容
+        int newCapacity = Math.max(MIN_CAPACITY, 16);
+        while (newCapacity < targetSize) {
+            newCapacity *= 2;
+        }
         return newCapacity;
     }
 }
