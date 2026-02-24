@@ -90,11 +90,12 @@ public class BaseChainViewer {
                     addCount++;
                 }
             }
-            if (!spaceCalculator.hasChange && foundComplete) addComplete = true;
-
-            // 传递数据到渲染数据中
-            SpaceCalculator.VertexAndIndex vertexAndIndex = spaceCalculator.getVertexAndIndex();
-            renderCache.updateData(vertexAndIndex.vertices, vertexAndIndex.indices);
+            // 仅在数据变化时重建并上传，避免每帧重复全量计算与传输。
+            if (spaceCalculator.hasChange) {
+                SpaceCalculator.VertexAndIndex vertexAndIndex = spaceCalculator.getVertexAndIndex();
+                renderCache.updateData(vertexAndIndex.vertices, vertexAndIndex.indices);
+            }
+            if (foundComplete && canBreakPositions.isEmpty() && !spaceCalculator.hasChange) addComplete = true;
         }
 
         try {
