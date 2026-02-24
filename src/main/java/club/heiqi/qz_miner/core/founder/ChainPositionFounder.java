@@ -1,9 +1,6 @@
 package club.heiqi.qz_miner.core.founder;
 
-import club.heiqi.qz_miner.core.BaseOperator;
 import club.heiqi.qz_miner.core.MinerConfig;
-import cpw.mods.fml.common.FMLCommonHandler;
-import gregtech.common.blocks.BlockOresAbstract;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
@@ -56,13 +53,16 @@ public class ChainPositionFounder extends BasePositionFounder {
             // LOG.info("重复的点");
             return false;
         }
-        Block block = player.worldObj.getBlock(pos.x, pos.y, pos.z);
+        if (!isSafeToReadAt(pos)) {
+            return false;
+        }
+        Block block = getBlockAt(pos);
         // 是空气跳过
         if (block.equals(Blocks.air) || block.getMaterial().isLiquid() || block.equals(Blocks.bedrock)) {
             return false;
         }
         Vector3i playerPos = new Vector3i((int) Math.floor(player.posX), (int) Math.floor(player.posY), (int) Math.floor(player.posZ));
-        int blockMeta = player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
+        int blockMeta = getBlockMetaAt(pos);
 
 
         // 玩家脚下的一个方块不能被挖掘
@@ -71,7 +71,13 @@ public class ChainPositionFounder extends BasePositionFounder {
         }
 
         // 判断是否与样本相同
-        if (!DeterminingIdentical.Identical(sampleBlock, sampleBlockMeta, sampleTileEntity, pos, player))
+        DeterminingIdentical.MatchDecision decision =
+                DeterminingIdentical.determineIdentical(sampleBlock, sampleBlockMeta, sampleTileEntity, pos, player);
+        if (decision == DeterminingIdentical.MatchDecision.DEFER) {
+            deferPosition(pos);
+            return false;
+        }
+        if (decision == DeterminingIdentical.MatchDecision.NO_MATCH)
             return false;
 
         // 检查该点连锁小区域内是否有已标记点
@@ -99,20 +105,6 @@ public class ChainPositionFounder extends BasePositionFounder {
 
     @Override
     public void addResult(Vector3i pos) {
-        try {
-            this.positions.put(pos);
-            this.foundedPositions.add(pos);
-            curCount++;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // 重新设置中断标志位
-        }
-
-        // 触发矿脉探索功能
-        if (BaseOperator.hasVP_API && DeterminingIdentical.hasBlockBaseOre &&
-                player.worldObj.isRemote && FMLCommonHandler.instance().getEffectiveSide().isClient() &&
-                player.worldObj.getBlock(pos.x, pos.y, pos.z) instanceof BlockOresAbstract
-        ) {
-            player.worldObj.getBlock(pos.x, pos.y, pos.z).onBlockActivated(player.worldObj, pos.x, pos.y, pos.z, player, 0,0,0,0);
-        }
+        super.addResult(pos);
     }
 }

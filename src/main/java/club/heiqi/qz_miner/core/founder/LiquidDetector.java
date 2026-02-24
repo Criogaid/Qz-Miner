@@ -19,8 +19,11 @@ public class LiquidDetector extends BasePositionFounder {
             // LOG.info("重复的点");
             return false;
         }
-        Block block = player.worldObj.getBlock(pos.x, pos.y, pos.z);
-        int meta = player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
+        if (!isSafeToReadAt(pos)) {
+            return false;
+        }
+        Block block = getBlockAt(pos);
+        int meta = getBlockMetaAt(pos);
         if (!block.getMaterial().isLiquid()) return false;
 
         // 判断是不是流动的液体

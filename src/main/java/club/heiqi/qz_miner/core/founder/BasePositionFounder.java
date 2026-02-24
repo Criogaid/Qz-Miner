@@ -1,5 +1,6 @@
 package club.heiqi.qz_miner.core.founder;
 
+import club.heiqi.qz_miner.Config;
 import club.heiqi.qz_miner.core.BaseOperator;
 import club.heiqi.qz_miner.core.MinerConfig;
 import club.heiqi.qz_miner.thread.Pauseable;
@@ -13,11 +14,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Vector3i;
 
-import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class BasePositionFounder extends Pauseable {
     public Logger LOG = LogManager.getLogger();
+    private static final int MAX_DEFER_ATTEMPTS = 3;
 
     public Vector3i center;
     public EntityPlayer player;
@@ -25,7 +30,10 @@ public class BasePositionFounder extends Pauseable {
     /**已收集的可采集点 外部容器*/
     public LinkedBlockingQueue<Vector3i> positions;
     /**已收集的可采集点 内部容器*/
-    public HashSet<Vector3i> foundedPositions = new HashSet<>();
+    public Set<Vector3i> foundedPositions = ConcurrentHashMap.newKeySet();
+    protected final ConcurrentLinkedQueue<Vector3i> deferredPositions = new ConcurrentLinkedQueue<>();
+    private final Set<Vector3i> deferredQueuedPositions = ConcurrentHashMap.newKeySet();
+    private final Map<Vector3i, Integer> deferredAttempts = new ConcurrentHashMap<>();
 
     public int curCount = 0; // 包含初始加入的中心块
     // ========== 挖掘样本 ==========
@@ -48,9 +56,9 @@ public class BasePositionFounder extends Pauseable {
         this.minerConfig = minerConfig;
         addResult(center);
 
-        sampleBlock = player.worldObj.getBlock(center.x, center.y, center.z);
-        sampleBlockMeta = player.worldObj.getBlockMetadata(center.x, center.y, center.z);
-        sampleTileEntity = player.worldObj.getTileEntity(center.x, center.y, center.z);
+        sampleBlock = getBlockAt(center);
+        sampleBlockMeta = getBlockMetaAt(center);
+        sampleTileEntity = getTileEntityAt(center);
     }
 
     @Override
@@ -88,12 +96,15 @@ public class BasePositionFounder extends Pauseable {
             // LOG.info("重复的点");
             return false;
         }
-        Block block = player.worldObj.getBlock(pos.x, pos.y, pos.z);
+        if (!isSafeToReadAt(pos)) {
+            return false;
+        }
+        Block block = getBlockAt(pos);
         if (block.equals(Blocks.air) || block.getMaterial().isLiquid() || block.equals(Blocks.bedrock)) {
             return false;
         }
         Vector3i playerPos = new Vector3i((int) Math.floor(player.posX), (int) Math.floor(player.posY), (int) Math.floor(player.posZ));
-        int blockMeta = player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
+        int blockMeta = getBlockMetaAt(pos);
 
         // 玩家脚下的一个方块不能被挖掘
         if (pos.x == playerPos.x && pos.y == (playerPos.y - 1) && pos.z == playerPos.z) {
@@ -105,22 +116,141 @@ public class BasePositionFounder extends Pauseable {
         return block.canHarvestBlock(player, blockMeta);
     }
 
-    public void addResult(Vector3i pos) {
+    public synchronized void addResult(Vector3i pos) {
         // LOG.info("添加位置: x: {} y: {} z: {}", pos.x, pos.y, pos.z);
+        Vector3i key = new Vector3i(pos);
+        if (!this.foundedPositions.add(key)) {
+            return;
+        }
         try {
-            this.positions.put(pos);
-            this.foundedPositions.add(pos);
+            this.positions.put(key);
             curCount++;
         } catch (InterruptedException e) {
+            this.foundedPositions.remove(key);
             Thread.currentThread().interrupt(); // 重新设置中断标志位
+            return;
         }
+        clearDeferredState(key);
 
         // 触发矿脉探索功能
         if (BaseOperator.hasVP_API && DeterminingIdentical.hasBlockBaseOre &&
                 player.worldObj.isRemote && FMLCommonHandler.instance().getEffectiveSide().isClient() &&
-                player.worldObj.getBlock(pos.x, pos.y, pos.z) instanceof BlockOresAbstract
+                getBlockAt(key) instanceof BlockOresAbstract
         ) {
-            player.worldObj.getBlock(pos.x, pos.y, pos.z).onBlockActivated(player.worldObj, pos.x, pos.y, pos.z, player, 0,0,0,0);
+            getBlockAt(key).onBlockActivated(player.worldObj, key.x, key.y, key.z, player, 0,0,0,0);
         }
+    }
+
+    protected void deferPosition(Vector3i pos) {
+        if (!isSafeToReadAt(pos)) {
+            return;
+        }
+        Vector3i key = new Vector3i(pos);
+        if (foundedPositions.contains(key)) {
+            clearDeferredState(key);
+            return;
+        }
+
+        if (!deferredQueuedPositions.add(key)) {
+            return;
+        }
+        int attempts = deferredAttempts.getOrDefault(key, 0) + 1;
+        if (attempts > MAX_DEFER_ATTEMPTS) {
+            deferredQueuedPositions.remove(key);
+            clearDeferredState(key);
+            return;
+        }
+        deferredAttempts.put(key, attempts);
+        deferredPositions.offer(key);
+    }
+
+    public void processDeferredPositions(int maxPerTick) {
+        if (maxPerTick <= 0) {
+            return;
+        }
+        int processed = 0;
+        while (processed < maxPerTick) {
+            Vector3i deferredPos = deferredPositions.poll();
+            if (deferredPos == null) {
+                return;
+            }
+            deferredQueuedPositions.remove(deferredPos);
+
+            if (foundedPositions.contains(deferredPos)) {
+                clearDeferredState(deferredPos);
+                processed++;
+                continue;
+            }
+
+            if (checkCanAdd(deferredPos)) {
+                addResult(deferredPos);
+            } else if (!deferredQueuedPositions.contains(deferredPos)) {
+                clearDeferredState(deferredPos);
+            }
+            processed++;
+        }
+    }
+
+    protected boolean isServerThread() {
+        return Thread.currentThread().getName().toLowerCase().contains("server");
+    }
+
+    protected boolean shouldGuardAsyncWorldAccess() {
+        return Config.safeAsyncWorldAccess && !isServerThread();
+    }
+
+    protected boolean isSafeToReadAt(Vector3i pos) {
+        if (pos.y < 0 || pos.y >= 256) {
+            return false;
+        }
+        if (!shouldGuardAsyncWorldAccess()) {
+            return true;
+        }
+        // 非服务器线程只允许访问已加载区块，避免触发ChunkIO和Tile列表变更。
+        return player.worldObj.blockExists(pos.x, pos.y, pos.z);
+    }
+
+    protected Block getBlockAt(Vector3i pos) {
+        if (!isSafeToReadAt(pos)) {
+            return Blocks.air;
+        }
+        return player.worldObj.getBlock(pos.x, pos.y, pos.z);
+    }
+
+    protected int getBlockMetaAt(Vector3i pos) {
+        if (!isSafeToReadAt(pos)) {
+            return 0;
+        }
+        return player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
+    }
+
+    protected TileEntity getTileEntityAt(Vector3i pos) {
+        if (!isSafeToReadAt(pos)) {
+            return null;
+        }
+        if (shouldGuardAsyncWorldAccess()) {
+            // 异步线程避免读取TileEntity，防止触发setTileEntity/列表改写。
+            return null;
+        }
+        return player.worldObj.getTileEntity(pos.x, pos.y, pos.z);
+    }
+
+    protected TileEntity tryGetTileEntityForMatch(Vector3i pos) {
+        if (!isSafeToReadAt(pos)) {
+            return null;
+        }
+        try {
+            return player.worldObj.getTileEntity(pos.x, pos.y, pos.z);
+        } catch (RuntimeException e) {
+            if (shouldGuardAsyncWorldAccess()) {
+                return null;
+            }
+            throw e;
+        }
+    }
+
+    private void clearDeferredState(Vector3i pos) {
+        deferredQueuedPositions.remove(pos);
+        deferredAttempts.remove(pos);
     }
 }

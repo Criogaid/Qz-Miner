@@ -13,11 +13,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Vector3i;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class BaseOperator {
     public Logger LOG = LogManager.getLogger();
+    private static final String SEARCHER_AUDIT_TAG = "[SearcherAudit]";
+    private static final int DEFERRED_CHECK_BUDGET_PER_TICK = 48;
 
     public EntityPlayerMP playerMP;
 
@@ -39,6 +43,7 @@ public class BaseOperator {
                 manager.pConfig
         );
         MyMod.parallelTick.addPreServerTickTask(this.positionFounder);
+        logSearcherCreate(pos);
     }
 
     public long startTime;
@@ -49,6 +54,9 @@ public class BaseOperator {
         if (!manager.inPressChainKey) {
             this.unRegistry();
         }
+
+        // 异步阶段延迟的判定请求在主线程限额处理，避免误判并控制卡顿风险。
+        positionFounder.processDeferredPositions(DEFERRED_CHECK_BUDGET_PER_TICK);
 
         if (canBreakPositions.isEmpty()) {
             return;
@@ -114,6 +122,15 @@ public class BaseOperator {
         FMLCommonHandler.instance().bus().unregister(this);
         manager.inOperate = false;
         // 终止搜索器
+        LOG.info(
+                "{} stop requester=BaseOperator player={} uuid={} task={} threadName={} at={}",
+                SEARCHER_AUDIT_TAG,
+                playerMP.getDisplayName(),
+                manager.playerUUID,
+                positionFounder.getClass().getSimpleName(),
+                positionFounder.getName(),
+                now()
+        );
         positionFounder.interrupt();
         // LOG.info("连锁执行器注销成功 {}", playerMP.getDisplayName());
     }
@@ -138,5 +155,25 @@ public class BaseOperator {
             Constant.LOG.warn("未检测到 VisualProspecting_API");
             hasVP_API = false;
         }
+    }
+
+    private void logSearcherCreate(Vector3i pos) {
+        LOG.info(
+                "{} create player={} uuid={} pos=({}, {}, {}) mainMode={} secondMode={} task={} threadName={} tickThread={} at={}",
+                SEARCHER_AUDIT_TAG,
+                playerMP.getDisplayName(),
+                manager.playerUUID,
+                pos.x, pos.y, pos.z,
+                manager.minerModeState.currentMainMode(),
+                manager.minerModeState.currentSecondMode(),
+                positionFounder.getClass().getSimpleName(),
+                positionFounder.getName(),
+                Thread.currentThread().getName(),
+                now()
+        );
+    }
+
+    private static String now() {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date());
     }
 }

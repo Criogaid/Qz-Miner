@@ -23,16 +23,18 @@ public class CropFounder extends BasePositionFounder {
             // LOG.info("重复的点");
             return false;
         }
-        Block block = player.worldObj.getBlock(pos.x, pos.y, pos.z);
-        TileEntity tile = player.worldObj.getTileEntity(pos.x, pos.y, pos.z);
+        if (!isSafeToReadAt(pos)) {
+            return false;
+        }
+        Block block = getBlockAt(pos);
         if (block.equals(Blocks.air) || block.getMaterial().isLiquid()) {
             return false;
         }
-        Vector3i playerPos = new Vector3i((int) Math.floor(player.posX), (int) Math.floor(player.posY), (int) Math.floor(player.posZ));
-        int blockMeta = player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
 
         // 检查是否是作物
         if (block instanceof BlockCrops) return true;
+
+        TileEntity tile = tryGetTileEntityForMatch(pos);
         if (tile instanceof TileEntityCrop) return true;
         return false;
     }

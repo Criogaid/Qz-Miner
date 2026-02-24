@@ -16,6 +16,7 @@ public class Config {
     public static int blockLimit = 1024;
     public static int smallRadius = 2;
     public static int tunnelWidth = 1;
+    public static boolean safeAsyncWorldAccess = true;
 
     public static final String CLIENT_CATEGORY = "Client";
     public static boolean usePreview = true, useChainDoneMessage = true;
@@ -34,6 +35,12 @@ public class Config {
         blockLimit = config.getInt("blockLimit", Configuration.CATEGORY_GENERAL, 1024, 0, Integer.MAX_VALUE, "最大连锁数量");
         smallRadius = config.getInt("smallRadius", Configuration.CATEGORY_GENERAL, 2, 0, Integer.MAX_VALUE, "连锁 小区域 检测半径");
         tunnelWidth = config.getInt("tunnelWidth", Configuration.CATEGORY_GENERAL, 1, 0, Integer.MAX_VALUE, "隧道半径");
+        safeAsyncWorldAccess = config.getBoolean(
+                "safeAsyncWorldAccess",
+                Configuration.CATEGORY_GENERAL,
+                true,
+                "启用异步世界访问保护: 在非服务器线程中避免触发区块加载和TileEntity访问"
+        );
         addExhaustion = config.get(CLIENT_CATEGORY, "addExhaustion", 0.025, "每次挖掘增加的饥饿值", -Double.MAX_VALUE, Double.MAX_VALUE).getDouble();
 
         usePreview = config.getBoolean("usePreview", CLIENT_CATEGORY, true, "是否使用连锁预览功能");

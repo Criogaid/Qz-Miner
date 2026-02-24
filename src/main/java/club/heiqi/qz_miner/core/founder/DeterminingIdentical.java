@@ -5,6 +5,7 @@ import appeng.block.solids.OreQuartzCharged;
 import bartworks.system.material.BWMetaGeneratedOres;
 import bartworks.system.material.BWMetaGeneratedSmallOres;
 import bartworks.system.material.TileEntityMetaGeneratedBlock;
+import club.heiqi.qz_miner.Config;
 import club.heiqi.qz_miner.utils.MessageUtils;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.common.blocks.BlockOresAbstract;
@@ -31,48 +32,95 @@ import java.util.Set;
 public class DeterminingIdentical {
     public static Logger LOG = LogManager.getLogger();
 
+    public enum MatchDecision {
+        MATCH,
+        NO_MATCH,
+        DEFER
+    }
+
     public static boolean Identical(Block sBlock, int sMeta, @Nullable TileEntity sTile, Vector3i pos, EntityPlayer player) {
+        return determineIdentical(sBlock, sMeta, sTile, pos, player) == MatchDecision.MATCH;
+    }
+
+    public static MatchDecision determineIdentical(
+            Block sBlock,
+            int sMeta,
+            @Nullable TileEntity sTile,
+            Vector3i pos,
+            EntityPlayer player
+    ) {
         if (!hasCheck) checkCompatibility();
+        boolean safeAsyncGuard = Config.safeAsyncWorldAccess && !isServerThread();
+
+        if (pos.y < 0 || pos.y >= 256) {
+            return MatchDecision.NO_MATCH;
+        }
+        if (safeAsyncGuard && !player.worldObj.blockExists(pos.x, pos.y, pos.z)) {
+            return MatchDecision.NO_MATCH;
+        }
 
         Block thisBlock = player.worldObj.getBlock(pos.x, pos.y, pos.z);
         int thisMeta = player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
-        TileEntity thisTile = player.worldObj.getTileEntity(pos.x, pos.y, pos.z);
 
         if (!sBlock.equals(thisBlock) || sMeta != thisMeta)
-            return false;
+            return MatchDecision.NO_MATCH;
+
+        if (sTile == null) {
+            return MatchDecision.MATCH;
+        }
+        if (safeAsyncGuard) {
+            return MatchDecision.DEFER;
+        }
+
+        TileEntity thisTile = tryGetTileEntityForMatch(player, pos, false);
+        if (thisTile == null) {
+            return MatchDecision.NO_MATCH;
+        }
 
         // 格雷机器判断相同
         if (hasGregTechTileEntity &&
                 sTile instanceof IGregTechTileEntity sMetaTile &&
                 thisTile instanceof IGregTechTileEntity thisMetaTile
         ) {
-            return sMetaTile.getMetaTileID() == thisMetaTile.getMetaTileID();
+            return sMetaTile.getMetaTileID() == thisMetaTile.getMetaTileID()
+                    ? MatchDecision.MATCH
+                    : MatchDecision.NO_MATCH;
         }
         // 格雷矿石判断相同
         if (hasTileEntityOre &&
                 sTile instanceof TileEntityOres sTileEntityOre &&
                 thisTile instanceof TileEntityOres tTileEntityOre
         ) {
-            return sTileEntityOre.mMetaData == tTileEntityOre.mMetaData;
+            return sTileEntityOre.mMetaData == tTileEntityOre.mMetaData
+                    ? MatchDecision.MATCH
+                    : MatchDecision.NO_MATCH;
         }
         // 判断BartWork
         if (hasTileEntityMetaGeneratedBlock &&
                 sTile instanceof TileEntityMetaGeneratedBlock sBTEMGB &&
                 thisTile instanceof TileEntityMetaGeneratedBlock tBTEMGB
         ) {
-            return sBTEMGB.mMetaData == tBTEMGB.mMetaData;
+            return sBTEMGB.mMetaData == tBTEMGB.mMetaData
+                    ? MatchDecision.MATCH
+                    : MatchDecision.NO_MATCH;
         }
 
         // 判断普通Tile
-        if (sTile != null && thisTile != null)
-            return sTile.getBlockMetadata() == thisTile.getBlockMetadata();
-
-        return true;
+        return sTile.getBlockMetadata() == thisTile.getBlockMetadata()
+                ? MatchDecision.MATCH
+                : MatchDecision.NO_MATCH;
     }
 
     public static Set<String> collectOrePackage = new HashSet<>();
     public static boolean isOreBlock(Vector3i pos, EntityPlayer player) {
         if (!hasCheck) checkCompatibility();
+        boolean safeAsyncGuard = Config.safeAsyncWorldAccess && !isServerThread();
+        if (pos.y < 0 || pos.y >= 256) {
+            return false;
+        }
+        if (safeAsyncGuard && !player.worldObj.blockExists(pos.x, pos.y, pos.z)) {
+            return false;
+        }
         Block block = player.worldObj.getBlock(pos.x, pos.y, pos.z);
         // int meta = player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
         // TileEntity tile = player.worldObj.getTileEntity(pos.x, pos.y, pos.z);
@@ -132,6 +180,23 @@ public class DeterminingIdentical {
     }
 
     public static boolean hasCheck = false;
+
+    private static boolean isServerThread() {
+        return Thread.currentThread().getName().toLowerCase().contains("server");
+    }
+
+    @Nullable
+    private static TileEntity tryGetTileEntityForMatch(EntityPlayer player, Vector3i pos, boolean safeAsyncGuard) {
+        try {
+            return player.worldObj.getTileEntity(pos.x, pos.y, pos.z);
+        } catch (RuntimeException e) {
+            if (safeAsyncGuard) {
+                return null;
+            }
+            throw e;
+        }
+    }
+
     public static void checkCompatibility() {
         hasCheck = true;
         hasGregTechTileEntity();
@@ -171,10 +236,10 @@ public class DeterminingIdentical {
     public static void hasTileEntityMetaGeneratedBlock() {
         try {
             Class<?> clazz = Class.forName("bartworks.system.material.TileEntityMetaGeneratedBlock");
-            hasTileEntityOre = true;
+            hasTileEntityMetaGeneratedBlock = true;
         } catch (ClassNotFoundException e) {
             LOG.warn("未检测到 TileEntityMetaGeneratedBlock");
-            hasTileEntityOre = false;
+            hasTileEntityMetaGeneratedBlock = false;
         }
     }
 

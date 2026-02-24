@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
  */
 public class ParallelTick {
     public Logger LOG = LogManager.getLogger();
+    private static final String SEARCHER_AUDIT_TAG = "[SearcherAudit]";
     public AtomicBoolean preTick = new AtomicBoolean(false);
     public AtomicBoolean postTick = new AtomicBoolean(false);
 
@@ -55,9 +56,11 @@ public class ParallelTick {
      */
     private void processTasks(boolean shouldRun, boolean preTick) {
         ArrayList<Pauseable> tasks = preTick ? preTickTasks : postTickTasks;
+        String queueType = preTick ? "pre" : "post";
         for (Pauseable task : tasks) {
             if (!task.started.get()) {
                 if (shouldRun) {
+                    logTaskStart(task, queueType);
                     task.start();
                     // LOG.info("启动线程：{}", task.getClass().getSimpleName());
                 }
@@ -88,6 +91,7 @@ public class ParallelTick {
             ArrayList<Pauseable> willRemove = new ArrayList<>();
             for (Pauseable task : normalTasks) {
                 if (!task.started.get()) {
+                    logTaskStart(task, "normal");
                     task.start();
                 }
                 if (task.stopped.get()) {
@@ -105,11 +109,13 @@ public class ParallelTick {
     public void addPreServerTickTask(Pauseable task) {
         task.setDaemon(true);
         preTickTasks.add(task);
+        logTaskQueued(task, "pre");
     }
 
     public void addPostServerTickTask(Pauseable task) {
         task.setDaemon(true);
         postTickTasks.add(task);
+        logTaskQueued(task, "post");
     }
 
     public void addNormalTask(Pauseable task) {
@@ -117,8 +123,31 @@ public class ParallelTick {
         try {
             task.setDaemon(true);
             normalTasks.add(task);
+            logTaskQueued(task, "normal");
         } finally {
             normalTaskLock.unlock();
         }
+    }
+
+    private void logTaskQueued(Pauseable task, String queueType) {
+        LOG.info(
+                "{} queued queue={} task={} threadName={} requesterThread={}",
+                SEARCHER_AUDIT_TAG,
+                queueType,
+                task.getClass().getSimpleName(),
+                task.getName(),
+                Thread.currentThread().getName()
+        );
+    }
+
+    private void logTaskStart(Pauseable task, String queueType) {
+        LOG.info(
+                "{} start queue={} task={} threadName={} requesterThread={}",
+                SEARCHER_AUDIT_TAG,
+                queueType,
+                task.getClass().getSimpleName(),
+                task.getName(),
+                Thread.currentThread().getName()
+        );
     }
 }
