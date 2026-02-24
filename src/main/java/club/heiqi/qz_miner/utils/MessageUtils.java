@@ -21,7 +21,8 @@ public class MessageUtils {
     public static void serverSendPlayerMessage(String content, UUID playerUUID) {
         List<EntityPlayer> players = FMLCommonHandler.instance().getMinecraftServerInstance().getEntityWorld().playerEntities;
         for (EntityPlayer player : new ArrayList<>(players)) {
-            if (player.getUniqueID().equals(playerUUID)) {
+            UUID currentUUID = PlayerUuidCompat.getPlayerUUID(player);
+            if (currentUUID != null && currentUUID.equals(playerUUID)) {
                 player.addChatMessage(new ChatComponentText(content));
                 return;
             }

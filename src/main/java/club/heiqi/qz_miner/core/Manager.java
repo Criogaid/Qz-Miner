@@ -2,6 +2,7 @@ package club.heiqi.qz_miner.core;
 
 import club.heiqi.qz_miner.Config;
 import club.heiqi.qz_miner.core.founder.DeterminingIdentical;
+import club.heiqi.qz_miner.utils.PlayerUuidCompat;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.Event;
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -39,7 +40,7 @@ public class Manager {
 
     public Manager(EntityPlayerMP player) {
         this.player = player;
-        playerUUID = player.getUniqueID();
+        playerUUID = PlayerUuidCompat.getPlayerUUID(player);
     }
 
     public BaseOperator operator = null;
@@ -164,7 +165,8 @@ public class Manager {
 
 
     public static boolean isSamePlayer_checkOnServer(EntityPlayer player, UUID playerUUID) {
-        return (player.getUniqueID().equals(playerUUID)  // 1.玩家UUID相同
+        UUID currentUUID = PlayerUuidCompat.getPlayerUUID(player);
+        return (currentUUID != null && currentUUID.equals(playerUUID)  // 1.玩家UUID相同
                 && player instanceof EntityPlayerMP  // 2.是服务器玩家类
                 && Thread.currentThread().getName().toLowerCase().contains("server")  // 3.发生在服务器线程
                 && !(player instanceof FakePlayer)  // 4.不是假玩家

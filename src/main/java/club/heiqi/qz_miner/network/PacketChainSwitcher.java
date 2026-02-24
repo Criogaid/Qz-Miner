@@ -2,6 +2,7 @@ package club.heiqi.qz_miner.network;
 
 import club.heiqi.qz_miner.MyMod;
 import club.heiqi.qz_miner.core.Manager;
+import club.heiqi.qz_miner.utils.PlayerUuidCompat;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
@@ -9,6 +10,8 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.player.EntityPlayerMP;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.UUID;
 
 public class PacketChainSwitcher implements IMessage {
     public boolean inChain;
@@ -37,7 +40,16 @@ public class PacketChainSwitcher implements IMessage {
         public IMessage onMessage(PacketChainSwitcher message, MessageContext ctx) {
             if (ctx.side.isServer()) {
                 EntityPlayerMP playerMP = ctx.getServerHandler().playerEntity;
-                Manager manager = MyMod.playerManager.managers.get(playerMP.getUniqueID());
+                UUID uuid = PlayerUuidCompat.getPlayerUUID(playerMP);
+                if (uuid == null) {
+                    LOG.warn("切换连锁状态失败: 无法获取玩家UUID {}", playerMP.getDisplayName());
+                    return null;
+                }
+                Manager manager = MyMod.playerManager.managers.get(uuid);
+                if (manager == null) {
+                    LOG.warn("切换连锁状态失败: 未找到管理器 {}", uuid);
+                    return null;
+                }
                 manager.inPressChainKey = message.inChain;
             }
             return null;

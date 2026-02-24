@@ -4,11 +4,14 @@ import club.heiqi.qz_miner.Config;
 import club.heiqi.qz_miner.MyMod;
 import club.heiqi.qz_miner.core.Manager;
 import club.heiqi.qz_miner.core.MinerConfig;
+import club.heiqi.qz_miner.utils.PlayerUuidCompat;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.player.EntityPlayerMP;
+
+import java.util.UUID;
 
 public class PacketMinerConfig implements IMessage {
     public MinerConfig minerConfig = new MinerConfig();
@@ -39,7 +42,14 @@ public class PacketMinerConfig implements IMessage {
             // 如果处理该消息的是服务端
             if (ctx.side.isServer()) {
                 EntityPlayerMP playerMP = ctx.getServerHandler().playerEntity;
-                Manager manager = MyMod.playerManager.managers.get(playerMP.getUniqueID());
+                UUID uuid = PlayerUuidCompat.getPlayerUUID(playerMP);
+                if (uuid == null) {
+                    return null;
+                }
+                Manager manager = MyMod.playerManager.managers.get(uuid);
+                if (manager == null) {
+                    return null;
+                }
 
                 // 服务端校验传来的配置
                 manager.receiveClientConfig(message.minerConfig);

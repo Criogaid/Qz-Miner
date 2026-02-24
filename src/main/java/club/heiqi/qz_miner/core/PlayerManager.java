@@ -1,5 +1,6 @@
 package club.heiqi.qz_miner.core;
 
+import club.heiqi.qz_miner.utils.PlayerUuidCompat;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
@@ -18,10 +19,15 @@ public class PlayerManager {
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.player instanceof EntityPlayerMP playerMP) {
+            UUID uuid = PlayerUuidCompat.getPlayerUUID(playerMP);
+            if (uuid == null) {
+                LOG.warn("注册玩家失败, 无法获取UUID: {}", playerMP.getDisplayName());
+                return;
+            }
             Manager manager = new Manager(playerMP);
-            managers.put(playerMP.getUniqueID(), manager);
+            managers.put(uuid, manager);
             manager.registry();
-            LOG.info("注册 玩家: {}: {}", playerMP.getDisplayName(), playerMP.getUniqueID());
+            LOG.info("注册 玩家: {}: {}", playerMP.getDisplayName(), uuid);
         }
     }
 
@@ -29,14 +35,19 @@ public class PlayerManager {
     @SubscribeEvent
     public void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.player instanceof EntityPlayerMP playerMP) {
-            Manager manager = managers.get(playerMP.getUniqueID());
+            UUID uuid = PlayerUuidCompat.getPlayerUUID(playerMP);
+            if (uuid == null) {
+                LOG.warn("卸载管理器时无法获取UUID: {}", playerMP.getDisplayName());
+                return;
+            }
+            Manager manager = managers.get(uuid);
             if (manager == null) {
-                LOG.warn("卸载管理器时未找到 玩家: {}: {}", playerMP.getDisplayName(), playerMP.getUniqueID());
+                LOG.warn("卸载管理器时未找到 玩家: {}: {}", playerMP.getDisplayName(), uuid);
                 return;
             }
             manager.unRegistry();
-            managers.remove(playerMP.getUniqueID());
-            LOG.info("卸载 玩家: {}: {}", playerMP.getDisplayName(), playerMP.getUniqueID());
+            managers.remove(uuid);
+            LOG.info("卸载 玩家: {}: {}", playerMP.getDisplayName(), uuid);
         }
     }
 

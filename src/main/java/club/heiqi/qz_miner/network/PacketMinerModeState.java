@@ -4,11 +4,14 @@ import club.heiqi.qz_miner.MyMod;
 import club.heiqi.qz_miner.core.MinerModeState;
 import club.heiqi.qz_miner.core.Manager;
 import club.heiqi.qz_miner.utils.IMath;
+import club.heiqi.qz_miner.utils.PlayerUuidCompat;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.player.EntityPlayerMP;
+
+import java.util.UUID;
 
 public class PacketMinerModeState implements IMessage {
     public MinerModeState state;
@@ -38,7 +41,14 @@ public class PacketMinerModeState implements IMessage {
         public IMessage onMessage(PacketMinerModeState message, MessageContext ctx) {
             if (ctx.side.isServer()) {
                 EntityPlayerMP playerMP = ctx.getServerHandler().playerEntity;
-                Manager manager = MyMod.playerManager.managers.get(playerMP.getUniqueID());
+                UUID uuid = PlayerUuidCompat.getPlayerUUID(playerMP);
+                if (uuid == null) {
+                    return null;
+                }
+                Manager manager = MyMod.playerManager.managers.get(uuid);
+                if (manager == null) {
+                    return null;
+                }
                 manager.minerModeState = message.state;
             }
             return null;
