@@ -121,10 +121,16 @@ public class Manager {
     public void dropCollects() {
         // 只收集自己掉落的东西!
         if (!drops.isEmpty()) {
+            double dropX = Math.floor(player.posX) + 0.5D;
+            double dropY = Math.floor(player.posY);
+            double dropZ = Math.floor(player.posZ) + 0.5D;
             for (ItemStack itemStack : drops) {
-                player.worldObj.spawnEntityInWorld(
-                        new EntityItem(player.worldObj, player.posX, player.posY, player.posZ, itemStack)
-                );
+                EntityItem entityItem = new EntityItem(player.worldObj, dropX, dropY, dropZ, itemStack);
+                entityItem.motionX = 0.0D;
+                entityItem.motionY = 0.0D;
+                entityItem.motionZ = 0.0D;
+                entityItem.velocityChanged = true;
+                player.worldObj.spawnEntityInWorld(entityItem);
             }
             drops.clear();
         }
