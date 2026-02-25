@@ -11,17 +11,23 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class PacketSweepMine implements IMessage {
-    private static final Queue<ArrayList<Vector3i>> CLIENT_PENDING = new ConcurrentLinkedQueue<>();
+    private static final Queue<SweepMinePayload> CLIENT_PENDING = new ConcurrentLinkedQueue<>();
 
     public ArrayList<Vector3i> mines = new ArrayList<>();
+    public double renderSeconds = -1.0D;
 
     public PacketSweepMine() {
     }
 
     public PacketSweepMine(ArrayList<Vector3i> mines) {
+        this(mines, -1.0D);
+    }
+
+    public PacketSweepMine(ArrayList<Vector3i> mines, double renderSeconds) {
         if (mines != null) {
             this.mines.addAll(mines);
         }
+        this.renderSeconds = renderSeconds;
     }
 
     @Override
@@ -34,6 +40,8 @@ public class PacketSweepMine implements IMessage {
             int z = buf.readInt();
             mines.add(new Vector3i(x, y, z));
         }
+        // 向后兼容旧协议（仅坐标），缺失时长时由客户端本地配置兜底。
+        renderSeconds = buf.readableBytes() >= 8 ? buf.readDouble() : -1.0D;
     }
 
     @Override
@@ -44,25 +52,36 @@ public class PacketSweepMine implements IMessage {
             buf.writeInt(pos.y);
             buf.writeInt(pos.z);
         }
+        buf.writeDouble(renderSeconds);
     }
 
-    public static ArrayList<Vector3i> pollClientPending() {
+    public static SweepMinePayload pollClientPending() {
         return CLIENT_PENDING.poll();
     }
 
-    private ArrayList<Vector3i> copyMines() {
+    private SweepMinePayload copyPayload() {
         ArrayList<Vector3i> copy = new ArrayList<>(mines.size());
         for (Vector3i pos : mines) {
             copy.add(new Vector3i(pos));
         }
-        return copy;
+        return new SweepMinePayload(copy, renderSeconds);
+    }
+
+    public static final class SweepMinePayload {
+        public final ArrayList<Vector3i> mines;
+        public final double renderSeconds;
+
+        private SweepMinePayload(ArrayList<Vector3i> mines, double renderSeconds) {
+            this.mines = mines;
+            this.renderSeconds = renderSeconds;
+        }
     }
 
     public static class PacketSweepMineHandler implements IMessageHandler<PacketSweepMine, IMessage> {
         @Override
         public IMessage onMessage(PacketSweepMine message, MessageContext ctx) {
             if (ctx.side.isClient()) {
-                CLIENT_PENDING.offer(message.copyMines());
+                CLIENT_PENDING.offer(message.copyPayload());
             }
             return null;
         }

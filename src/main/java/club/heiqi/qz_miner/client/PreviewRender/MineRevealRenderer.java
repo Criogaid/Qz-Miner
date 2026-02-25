@@ -43,8 +43,8 @@ public class MineRevealRenderer {
             return;
         }
 
-        ArrayList<Vector3i> latest = null;
-        ArrayList<Vector3i> polled;
+        PacketSweepMine.SweepMinePayload latest = null;
+        PacketSweepMine.SweepMinePayload polled;
         while ((polled = PacketSweepMine.pollClientPending()) != null) {
             latest = polled;
         }
@@ -52,10 +52,15 @@ public class MineRevealRenderer {
             return;
         }
         revealedMines.clear();
-        revealedMines.addAll(latest);
+        revealedMines.addAll(latest.mines);
         long now = System.nanoTime();
-        long renderNanos = (long) (Math.max(0.0D, Config.lootGameMineRevealRenderSeconds) * 1_000_000_000L);
+        long renderNanos = resolveRenderNanos(latest.renderSeconds);
         revealExpireNanos = now + renderNanos;
+    }
+
+    private long resolveRenderNanos(double packetRenderSeconds) {
+        double renderSeconds = packetRenderSeconds >= 0.0D ? packetRenderSeconds : Config.lootGameMineRevealRenderSeconds;
+        return (long) (Math.max(0.0D, renderSeconds) * 1_000_000_000L);
     }
 
     private void renderSweepMine(float partialTicks) {
