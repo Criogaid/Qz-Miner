@@ -6,6 +6,9 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import org.joml.Vector3i;
 
+import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class ChainPositionFounder extends BasePositionFounder {
@@ -16,36 +19,51 @@ public class ChainPositionFounder extends BasePositionFounder {
 
     @Override
     public void run1() {
-        int curRadius = 1;
+        int minX = center.x - minerConfig.bigRadius;
+        int maxX = center.x + minerConfig.bigRadius;
+        int minY = Math.max(center.y - minerConfig.bigRadius, 0);
+        int maxY = Math.min(center.y + minerConfig.bigRadius, 255);
+        int minZ = center.z - minerConfig.bigRadius;
+        int maxZ = center.z + minerConfig.bigRadius;
+
+        ArrayDeque<Vector3i> frontier = new ArrayDeque<>();
+        Set<Long> visited = new HashSet<>();
+        frontier.offer(new Vector3i(center));
+        visited.add(packPosKey(center.x, center.y, center.z));
         Vector3i scanPos = new Vector3i();
-        while (curCount < minerConfig.blockLimit && curRadius <= minerConfig.bigRadius) {
-            for (int x = center.x - curRadius; x <= center.x + curRadius; x++) {
-                int minY = Math.max(center.y - curRadius, 0);
-                int maxY = Math.min(center.y + curRadius, 255);
-                for (int y = minY; y <= maxY; y++) {
-                    for (int z = center.z - curRadius; z <= center.z + curRadius; z++) {
+
+        while (curCount < minerConfig.blockLimit && !frontier.isEmpty()) {
+            Vector3i current = frontier.poll();
+            int nearMinX = Math.max(current.x - minerConfig.smallRadius, minX);
+            int nearMaxX = Math.min(current.x + minerConfig.smallRadius, maxX);
+            int nearMinY = Math.max(current.y - minerConfig.smallRadius, minY);
+            int nearMaxY = Math.min(current.y + minerConfig.smallRadius, maxY);
+            int nearMinZ = Math.max(current.z - minerConfig.smallRadius, minZ);
+            int nearMaxZ = Math.min(current.z + minerConfig.smallRadius, maxZ);
+
+            for (int x = nearMinX; x <= nearMaxX; x++) {
+                for (int y = nearMinY; y <= nearMaxY; y++) {
+                    for (int z = nearMinZ; z <= nearMaxZ; z++) {
+                        long key = packPosKey(x, y, z);
+                        if (!visited.add(key)) {
+                            continue;
+                        }
+
                         scanPos.set(x, y, z);
-
                         if (checkCanAdd(scanPos)) {
-                            this.addResult(scanPos);
+                            addResult(scanPos);
+                            if (curCount >= minerConfig.blockLimit) {
+                                return;
+                            }
+                            frontier.offer(new Vector3i(scanPos));
                         }
 
-                        // 检查性流程    检查数量     检查线程是否被中断
-                        if (curCount >= minerConfig.blockLimit) {
-                            return;
-                        }
                         waitUntil();
                         if (Thread.currentThread().isInterrupted()) {
-                            // LOG.info("线程被中断");
                             return;
                         }
                     }
                 }
-            }
-            curRadius++;
-            if (curRadius > minerConfig.bigRadius) {
-                // 超出半径范围，退出
-                return;
             }
         }
     }
@@ -82,24 +100,6 @@ public class ChainPositionFounder extends BasePositionFounder {
         if (decision == DeterminingIdentical.MatchDecision.NO_MATCH)
             return false;
 
-        // 检查该点连锁小区域内是否有已标记点
-        boolean inRange = false;
-        for (Vector3i position : foundedPositions) {
-            // 判断点 X Y Z 距离 及其曼哈顿距离
-            int xOffset = Math.abs(position.x - pos.x);
-            int yOffset = Math.abs(position.y - pos.y);
-            int zOffset = Math.abs(position.z - pos.z);
-
-            if (xOffset <= minerConfig.smallRadius &&
-                    yOffset <= minerConfig.smallRadius &&
-                    zOffset <= minerConfig.smallRadius
-            ) {
-                inRange = true;
-                break;
-            }
-        }
-        if (!inRange) return false;
-
         if (player.capabilities.isCreativeMode) return true;
         return block.canHarvestBlock(player, blockMeta);
     }
@@ -107,5 +107,9 @@ public class ChainPositionFounder extends BasePositionFounder {
     @Override
     public void addResult(Vector3i pos) {
         super.addResult(pos);
+    }
+
+    private static long packPosKey(int x, int y, int z) {
+        return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF);
     }
 }
