@@ -104,11 +104,6 @@ public class ChainPositionFounder extends BasePositionFounder {
         return block.canHarvestBlock(player, blockMeta);
     }
 
-    @Override
-    public void addResult(Vector3i pos) {
-        super.addResult(pos);
-    }
-
     private static long packPosKey(int x, int y, int z) {
         return ((long) (x & 0x3FFFFFF) << 38) | ((long) (z & 0x3FFFFFF) << 12) | (y & 0xFFF);
     }

@@ -4,7 +4,6 @@ import club.heiqi.qz_miner.Config;
 import club.heiqi.qz_miner.core.founder.DeterminingIdentical;
 import club.heiqi.qz_miner.utils.PlayerUuidCompat;
 import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.eventhandler.Event;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;

@@ -2,10 +2,7 @@ package club.heiqi.qz_miner.core.founder;
 
 import club.heiqi.qz_miner.core.MinerConfig;
 import net.minecraft.entity.player.EntityPlayer;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
 import org.joml.Vector3i;
-import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;

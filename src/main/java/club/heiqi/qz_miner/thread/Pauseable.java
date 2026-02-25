@@ -1,7 +1,6 @@
 package club.heiqi.qz_miner.thread;
 
 import club.heiqi.qz_miner.Constant;
-import club.heiqi.qz_miner.MyMod;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 

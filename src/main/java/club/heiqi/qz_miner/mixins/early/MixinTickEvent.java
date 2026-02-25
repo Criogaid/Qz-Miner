@@ -17,22 +17,12 @@ public class MixinTickEvent {
         MyMod.parallelTick.processPostTickTasks(true);
     }
 
-    @Inject(method = "onPreServerTick", at = @At("TAIL"))
-    public void onPreServerTickEnd(CallbackInfo ci) {
-
-    }
-
     @Inject(method = "onPostServerTick", at = @At("HEAD"))
     public void onPostServerTickStart(CallbackInfo ci) {
         MyMod.parallelTick.preTick.set(false);
         MyMod.parallelTick.processPreTickTasks(false);
         MyMod.parallelTick.postTick.set(false);
         MyMod.parallelTick.processPostTickTasks(false);
-    }
-
-    @Inject(method = "onPostServerTick", at = @At("TAIL"))
-    public void onPostServerTickEnd(CallbackInfo ci) {
-
     }
 
     @Inject(method = "onPreClientTick", at = @At("HEAD"))

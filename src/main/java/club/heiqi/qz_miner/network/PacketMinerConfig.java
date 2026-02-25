@@ -64,7 +64,7 @@ public class PacketMinerConfig implements IMessage {
                 Config.blockLimit = minerConfig.blockLimit;
                 Config.smallRadius = minerConfig.smallRadius;
                 Config.tunnelWidth = minerConfig.tunnelWidth;
-                Config.useChainDoneMessage = minerConfig.useChainDoneMessage;;
+                Config.useChainDoneMessage = minerConfig.useChainDoneMessage;
             }
             return null;
         }
