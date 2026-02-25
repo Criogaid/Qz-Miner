@@ -4,10 +4,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 /**
  * 并行tick类
@@ -27,12 +26,7 @@ public class ParallelTick {
     public void processPreTickTasks(boolean shouldRun) {
         // 清理preTickTasks
         if (!shouldRun) {
-            List<Pauseable> willRemove = preTickTasks.stream()
-                    // 过滤出已经结束的线程
-                    .filter(task -> task.stopped.get()).collect(Collectors.toList());
-            // 移除已经结束的线程
-            preTickTasks.removeAll(willRemove);
-            // LOG.info("清理了{}个线程", willRemove.size());
+            removeStoppedTasks(preTickTasks);
         }
         processTasks(shouldRun, true);
     }
@@ -40,12 +34,7 @@ public class ParallelTick {
     public void processPostTickTasks(boolean shouldRun) {
         // 清理postTickTasks
         if (!shouldRun) {
-            List<Pauseable> willRemove = postTickTasks.stream()
-                    // 过滤出已经结束的线程
-                    .filter(task -> task.stopped.get()).collect(Collectors.toList());
-            // 移除已经结束的线程
-            postTickTasks.removeAll(willRemove);
-            // LOG.info("清理了{}个线程", willRemove.size());
+            removeStoppedTasks(postTickTasks);
         }
         processTasks(shouldRun, false);
     }
@@ -88,18 +77,17 @@ public class ParallelTick {
         };
         normalTaskLock.lock();
         try {
-            ArrayList<Pauseable> willRemove = new ArrayList<>();
-            for (Pauseable task : normalTasks) {
+            Iterator<Pauseable> iterator = normalTasks.iterator();
+            while (iterator.hasNext()) {
+                Pauseable task = iterator.next();
                 if (!task.started.get()) {
                     logTaskStart(task, "normal");
                     task.start();
                 }
                 if (task.stopped.get()) {
-                    willRemove.add(task);
+                    iterator.remove();
                 }
             }
-
-            normalTasks.removeAll(willRemove);
         } finally {
             normalTaskLock.unlock();
         }
@@ -149,5 +137,14 @@ public class ParallelTick {
                 task.getName(),
                 Thread.currentThread().getName()
         );
+    }
+
+    private static void removeStoppedTasks(ArrayList<Pauseable> tasks) {
+        Iterator<Pauseable> iterator = tasks.iterator();
+        while (iterator.hasNext()) {
+            if (iterator.next().stopped.get()) {
+                iterator.remove();
+            }
+        }
     }
 }
