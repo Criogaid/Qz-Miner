@@ -78,6 +78,14 @@ public class MinerRenderer {
         }
     }
 
+    public void refreshPreviewAfterModeChanged() {
+        if (viewer != null) {
+            viewer.inPressChainKey = false;
+            viewer.unRegistry();
+            viewer = null;
+        }
+    }
+
 
     public float[][] axisVertex = {
     //      0          1          2          3

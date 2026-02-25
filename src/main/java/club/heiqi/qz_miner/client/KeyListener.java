@@ -11,13 +11,13 @@ import club.heiqi.qz_miner.utils.MessageUtils;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.InputEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraftforge.client.event.MouseEvent;
 import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -38,19 +38,26 @@ public class KeyListener {
     public boolean onMainModeSwitch = false;
 
     @SubscribeEvent
-    public void onInput(InputEvent event) {
-        // ========== 按住连锁键 + 滚轮切换子模式 ==========
-        if (onChain && event instanceof InputEvent.MouseInputEvent && Mouse.getEventDWheel() != 0) {
-            MinerModeState minerModeState = ((ClientProxy) MyMod.proxy).clientState.minerModeState;
-            int dWheel = Mouse.getEventDWheel();
-            if (dWheel < 0) {
-                minerModeState.nextSecondMode();
-            } else if (dWheel > 0) {
-                minerModeState.previousSecondMode();
-            }
-            // 网络同步当前子模式
-            MyMod.networkMain.network.sendToServer(new PacketMinerModeState(minerModeState));
-            MessageUtils.printSelfMessage("当前子模式: "+I18n.format(minerModeState.currentSecondMode()));
+    public void onMouseEvent(MouseEvent event) {
+        if (!onChain) {
+            return;
+        }
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.currentScreen != null || event.dwheel == 0) {
+            return;
+        }
+        MinerModeState minerModeState = ((ClientProxy) MyMod.proxy).clientState.minerModeState;
+        if (event.dwheel < 0) {
+            minerModeState.nextSecondMode();
+        } else {
+            minerModeState.previousSecondMode();
+        }
+        // 网络同步当前子模式
+        MyMod.networkMain.network.sendToServer(new PacketMinerModeState(minerModeState));
+        MessageUtils.printSelfMessage("当前子模式: " + I18n.format(minerModeState.currentSecondMode()));
+        ((ClientProxy) MyMod.proxy).minerRenderer.refreshPreviewAfterModeChanged();
+        if (event.isCancelable()) {
+            event.setCanceled(true);
         }
     }
 
@@ -87,6 +94,7 @@ public class KeyListener {
             MinerModeState minerModeState = ((ClientProxy) MyMod.proxy).clientState.minerModeState;
             MessageUtils.printSelfMessage("当前模式: " + I18n.format(minerModeState.nextMainMode()));
             MyMod.networkMain.network.sendToServer(new PacketMinerModeState(minerModeState));
+            ((ClientProxy) MyMod.proxy).minerRenderer.refreshPreviewAfterModeChanged();
         }
         onMainModeSwitch = pressed;
     }
