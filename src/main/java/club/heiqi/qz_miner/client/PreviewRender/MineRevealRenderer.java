@@ -4,15 +4,12 @@ import club.heiqi.qz_miner.ClientProxy;
 import club.heiqi.qz_miner.Config;
 import club.heiqi.qz_miner.MyMod;
 import club.heiqi.qz_miner.network.PacketSweepMine;
-import club.heiqi.qz_miner.utils.MessageUtils;
 import club.heiqi.qz_miner.utils.MatrixUtils;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.common.MinecraftForge;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.lwjgl.opengl.GL11;
@@ -23,12 +20,8 @@ import java.util.ArrayList;
  * 扫雷揭示渲染器，和连锁预览渲染职责分离。
  */
 public class MineRevealRenderer {
-    private static final Logger LOG = LogManager.getLogger();
-    private static final long DEBUG_CHAT_COOLDOWN_NANOS = 1_000_000_000L;
-
     private final ArrayList<Vector3i> revealedMines = new ArrayList<>();
     private long revealExpireNanos = 0L;
-    private long nextDebugPacketChatNanos = 0L;
 
     @SubscribeEvent
     public void onRenderWorldLast(RenderWorldLastEvent event) {
@@ -63,20 +56,6 @@ public class MineRevealRenderer {
         long now = System.nanoTime();
         long renderNanos = (long) (Math.max(0.0D, Config.lootGameMineRevealRenderSeconds) * 1_000_000_000L);
         revealExpireNanos = now + renderNanos;
-
-        if (now >= nextDebugPacketChatNanos) {
-            nextDebugPacketChatNanos = now + DEBUG_CHAT_COOLDOWN_NANOS;
-            if (latest.isEmpty()) {
-                MessageUtils.printSelfMessage("扫雷调试: 已收到服务端回包，但雷点数量为 0");
-            } else {
-                Vector3i first = latest.get(0);
-                MessageUtils.printSelfMessage(
-                        "扫雷调试: 收到雷点 " + latest.size() + " 个，样例坐标: "
-                                + first.x + ", " + first.y + ", " + first.z
-                );
-            }
-            LOG.info("MineReveal debug packet: size={}, expireNanos={}", latest.size(), revealExpireNanos);
-        }
     }
 
     private void renderSweepMine(float partialTicks) {
