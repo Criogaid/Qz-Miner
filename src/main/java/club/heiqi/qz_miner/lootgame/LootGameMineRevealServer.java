@@ -80,6 +80,10 @@ public class LootGameMineRevealServer {
 
         long cooldownNanos = (long) (Math.max(0.0D, Config.lootGameMineRevealCooldownSeconds) * 1_000_000_000L);
         Long lastUse = lastRevealNanos.get(uuid);
+        if (lastUse != null && now - lastUse >= cooldownNanos) {
+            lastRevealNanos.remove(uuid);
+            lastUse = null;
+        }
         if (lastUse != null && now - lastUse < cooldownNanos) {
             long remainingNanos = cooldownNanos - (now - lastUse);
             trySendCooldownHint(playerMP, uuid, now, remainingNanos);
@@ -117,7 +121,13 @@ public class LootGameMineRevealServer {
             return;
         }
         pressStartNanos.remove(uuid);
-        lastRevealNanos.remove(uuid);
+        Long lastUse = lastRevealNanos.get(uuid);
+        if (lastUse != null) {
+            long cooldownNanos = (long) (Math.max(0.0D, Config.lootGameMineRevealCooldownSeconds) * 1_000_000_000L);
+            if (System.nanoTime() - lastUse >= cooldownNanos) {
+                lastRevealNanos.remove(uuid);
+            }
+        }
         lastCooldownHintNanos.remove(uuid);
     }
 }
