@@ -27,11 +27,10 @@ public class ScreenBlastingFounder extends BasePositionFounder {
         if (block.equals(Blocks.air) || block.getMaterial().isLiquid() || block.equals(Blocks.bedrock)) {
             return false;
         }
-        Vector3i playerPos = new Vector3i((int) Math.floor(player.posX), (int) Math.floor(player.posY), (int) Math.floor(player.posZ));
         int blockMeta = getBlockMetaAt(pos);
 
         // 玩家脚下的一个方块不能被挖掘
-        if (pos.x == playerPos.x && pos.y == (playerPos.y - 1) && pos.z == playerPos.z)
+        if (isPlayerFootBlock(pos))
             return false;
 
         // 筛选
