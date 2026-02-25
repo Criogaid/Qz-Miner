@@ -32,6 +32,7 @@ public class LootGameMineRevealServer {
             return;
         }
         if (!LootGameMineCompat.isAvailable()) {
+            LOG.warn("LootGames 扫雷揭示服务端监听未注册: 未检测到可用的 LootGames 兼容环境。");
             return;
         }
         FMLCommonHandler.instance().bus().register(this);
