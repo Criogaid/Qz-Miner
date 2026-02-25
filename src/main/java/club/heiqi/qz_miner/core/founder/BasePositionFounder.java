@@ -65,28 +65,47 @@ public class BasePositionFounder extends Pauseable {
     public void run1() {
         int curRadius = 1;
         Vector3i scanPos = new Vector3i();
+        MutableBoxDiffPositionIterator iterator = new MutableBoxDiffPositionIterator();
+        boolean hasPreviousBounds = false;
+        int prevMinX = 0;
+        int prevMaxX = 0;
+        int prevMinY = 0;
+        int prevMaxY = 0;
+        int prevMinZ = 0;
+        int prevMaxZ = 0;
         while (curCount < minerConfig.blockLimit && curRadius <= minerConfig.bigRadius) {
             // LOG.info("当前半径: {} 当前块数: {}", curRadius, curCount);
-            for (int x = center.x - curRadius; x <= center.x + curRadius; x++) {
-                int minY = Math.max(center.y - curRadius, 0);
-                int maxY = Math.min(center.y + curRadius, 255);
-                for (int y = minY; y <= maxY; y++) {
-                    for (int z = center.z - curRadius; z <= center.z + curRadius; z++) {
-                        scanPos.set(x, y, z);
-                        if (checkCanAdd(scanPos)) {
-                            this.addResult(scanPos);
-                        }
-                        if (curCount >= minerConfig.blockLimit) {
-                            return;
-                        }
-                        waitUntil();
-                        if (Thread.currentThread().isInterrupted()) {
-                            LOG.info("线程被中断");
-                            return;
-                        }
-                    }
+            int minX = center.x - curRadius;
+            int maxX = center.x + curRadius;
+            int minY = Math.max(center.y - curRadius, 0);
+            int maxY = Math.min(center.y + curRadius, 255);
+            int minZ = center.z - curRadius;
+            int maxZ = center.z + curRadius;
+            iterator.reset(
+                    minX, maxX, minY, maxY, minZ, maxZ,
+                    prevMinX, prevMaxX, prevMinY, prevMaxY, prevMinZ, prevMaxZ,
+                    hasPreviousBounds
+            );
+            while (iterator.next(scanPos)) {
+                if (checkCanAdd(scanPos)) {
+                    this.addResult(scanPos);
+                }
+                if (curCount >= minerConfig.blockLimit) {
+                    return;
+                }
+                waitUntil();
+                if (Thread.currentThread().isInterrupted()) {
+                    LOG.info("线程被中断");
+                    return;
                 }
             }
+            prevMinX = minX;
+            prevMaxX = maxX;
+            prevMinY = minY;
+            prevMaxY = maxY;
+            prevMinZ = minZ;
+            prevMaxZ = maxZ;
+            hasPreviousBounds = true;
             curRadius++;
             if (curRadius > minerConfig.bigRadius) {
                 break; // 超出半径范围，退出

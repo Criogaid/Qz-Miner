@@ -24,26 +24,33 @@ public class TunnelBlastingFounder extends BasePositionFounder {
         Vector3i verticalA = verticals.get(0);
         Vector3i verticalB = verticals.get(1);
         int tunnelRadius = minerConfig.tunnelWidth; // 隧道半径 轴向半径的方形
+        MutableBoxPositionIterator crossSectionIterator = new MutableBoxPositionIterator();
+        Vector3i crossSectionOffset = new Vector3i();
+        Vector3i scanPos = new Vector3i();
         while (curCount < minerConfig.blockLimit && curRadius < minerConfig.bigRadius) {
             // 沿主方向延伸
-            Vector3i mainDirPoint = new Vector3i(lookAxisDir).mul(curRadius);
+            int baseX = center.x + lookAxisDir.x * curRadius;
+            int baseY = center.y + lookAxisDir.y * curRadius;
+            int baseZ = center.z + lookAxisDir.z * curRadius;
 
             // 遍历横截面
-            for (int a = -tunnelRadius; a <= tunnelRadius; a++) {
-                for (int b = -tunnelRadius; b <= tunnelRadius; b++) {
-                    Vector3i point = new Vector3i(center)
-                            .add(mainDirPoint)
-                            .add(new Vector3i(verticalA).mul(a))
-                            .add(new Vector3i(verticalB).mul(b));
+            crossSectionIterator.reset(-tunnelRadius, tunnelRadius, 0, 0, -tunnelRadius, tunnelRadius);
+            while (crossSectionIterator.next(crossSectionOffset)) {
+                int a = crossSectionOffset.x;
+                int b = crossSectionOffset.z;
+                scanPos.set(
+                        baseX + verticalA.x * a + verticalB.x * b,
+                        baseY + verticalA.y * a + verticalB.y * b,
+                        baseZ + verticalA.z * a + verticalB.z * b
+                );
 
-                    if (!checkCanAdd(point)) continue;
-                    addResult(point);
+                if (!checkCanAdd(scanPos)) continue;
+                addResult(scanPos);
 
-                    waitUntil();
-                    // 检查方块数量限制
-                    if (curCount >= minerConfig.blockLimit) {
-                        return;
-                    }
+                waitUntil();
+                // 检查方块数量限制
+                if (curCount >= minerConfig.blockLimit) {
+                    return;
                 }
             }
 
