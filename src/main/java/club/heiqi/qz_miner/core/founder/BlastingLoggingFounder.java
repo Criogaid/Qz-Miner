@@ -25,7 +25,7 @@ public class BlastingLoggingFounder extends BasePositionFounder {
             for (int x = center.x - curRadius; x <= center.x + curRadius; x++) {
                 int minY = Math.max(center.y - highRadius, 0);
                 int maxY = Math.min(center.y + highRadius, 255);
-                for (int y = center.y - highRadius; y <= center.y + highRadius; y++) {
+                for (int y = minY; y <= maxY; y++) {
                     for (int z = center.z - curRadius; z <= center.z + curRadius; z++) {
                         Vector3i pos = new Vector3i(x, y, z);
                         if (checkCanAdd(pos)) {
@@ -41,7 +41,6 @@ public class BlastingLoggingFounder extends BasePositionFounder {
                         }
                     }
                 }
-                if (minY == 0 && maxY == 255) break; // 超出高度范围
             }
             curRadius = Math.min(curRadius+1, minerConfig.bigRadius);
             highRadius++;
