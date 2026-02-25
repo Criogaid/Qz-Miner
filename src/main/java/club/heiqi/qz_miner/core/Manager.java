@@ -36,9 +36,9 @@ public class Manager {
     public EntityPlayerMP player;
     public final UUID playerUUID;
     public MinerConfig pConfig = new MinerConfig();
-    public MinerModeState minerModeState = new MinerModeState();
+    public volatile MinerModeState minerModeState = new MinerModeState();
     /**是否按下连锁键*/
-    public boolean inPressChainKey = false;
+    public volatile boolean inPressChainKey = false;
     public boolean inOperate = false;
 
     public Manager(EntityPlayerMP player) {

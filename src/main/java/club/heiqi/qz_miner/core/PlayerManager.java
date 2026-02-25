@@ -8,13 +8,13 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayerManager {
     public static Logger LOG = LogManager.getLogger();
-    public Map<UUID, Manager> managers = new HashMap<>();
+    public Map<UUID, Manager> managers = new ConcurrentHashMap<>();
 
     @SubscribeEvent
     public void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
