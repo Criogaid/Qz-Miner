@@ -141,7 +141,7 @@ public class ShaderManager {
         int location = getUniformLocation(name);
         if (location != -1) {
             matrixBuffer.clear();
-            matrixBuffer.put(value.get(new float[16]));
+            value.get(matrixBuffer);
             matrixBuffer.flip();
             GL20.glUniformMatrix4(location, false, matrixBuffer);
         }
