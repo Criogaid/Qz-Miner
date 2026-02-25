@@ -6,14 +6,21 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import org.joml.Vector3i;
 
-import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class ChainPositionFounder extends BasePositionFounder {
+    private LinkedBlockingQueue<Vector3i> frontier;
+    private Set<Long> frontierSeeded;
+    private volatile boolean bfsReady = false;
+
     public ChainPositionFounder(Vector3i center, LinkedBlockingQueue<Vector3i> results, EntityPlayer player, MinerConfig minerConfig) {
         super(center, results, player, minerConfig);
+        this.frontier = new LinkedBlockingQueue<>();
+        this.frontierSeeded = ConcurrentHashMap.newKeySet();
         setName("连锁搜索器");
     }
 
@@ -26,45 +33,78 @@ public class ChainPositionFounder extends BasePositionFounder {
         int minZ = center.z - minerConfig.bigRadius;
         int maxZ = center.z + minerConfig.bigRadius;
 
-        ArrayDeque<Vector3i> frontier = new ArrayDeque<>();
+        bfsReady = true;
         Set<Long> visited = new HashSet<>();
-        frontier.offer(new Vector3i(center));
         visited.add(packPosKey(center.x, center.y, center.z));
+        frontier.clear();
+        frontierSeeded.clear();
+        enqueueFrontier(center);
+
+        long idleStartNanos = -1L;
         Vector3i scanPos = new Vector3i();
+        try {
+            while (curCount < minerConfig.blockLimit) {
+                waitUntil();
+                if (Thread.currentThread().isInterrupted()) {
+                    return;
+                }
 
-        while (curCount < minerConfig.blockLimit && !frontier.isEmpty()) {
-            Vector3i current = frontier.poll();
-            int nearMinX = Math.max(current.x - minerConfig.smallRadius, minX);
-            int nearMaxX = Math.min(current.x + minerConfig.smallRadius, maxX);
-            int nearMinY = Math.max(current.y - minerConfig.smallRadius, minY);
-            int nearMaxY = Math.min(current.y + minerConfig.smallRadius, maxY);
-            int nearMinZ = Math.max(current.z - minerConfig.smallRadius, minZ);
-            int nearMaxZ = Math.min(current.z + minerConfig.smallRadius, maxZ);
-
-            for (int x = nearMinX; x <= nearMaxX; x++) {
-                for (int y = nearMinY; y <= nearMaxY; y++) {
-                    for (int z = nearMinZ; z <= nearMaxZ; z++) {
-                        long key = packPosKey(x, y, z);
-                        if (!visited.add(key)) {
-                            continue;
+                Vector3i current;
+                try {
+                    current = frontier.poll(2L, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                if (current == null) {
+                    if (frontier.isEmpty() && deferredPositions.isEmpty()) {
+                        if (idleStartNanos < 0L) {
+                            idleStartNanos = System.nanoTime();
+                        } else if (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - idleStartNanos) >= 50L) {
+                            return;
                         }
+                    } else {
+                        idleStartNanos = -1L;
+                    }
+                    continue;
+                }
+                idleStartNanos = -1L;
 
-                        scanPos.set(x, y, z);
-                        if (checkCanAdd(scanPos)) {
-                            addResult(scanPos);
-                            if (curCount >= minerConfig.blockLimit) {
+                int nearMinX = Math.max(current.x - minerConfig.smallRadius, minX);
+                int nearMaxX = Math.min(current.x + minerConfig.smallRadius, maxX);
+                int nearMinY = Math.max(current.y - minerConfig.smallRadius, minY);
+                int nearMaxY = Math.min(current.y + minerConfig.smallRadius, maxY);
+                int nearMinZ = Math.max(current.z - minerConfig.smallRadius, minZ);
+                int nearMaxZ = Math.min(current.z + minerConfig.smallRadius, maxZ);
+
+                for (int x = nearMinX; x <= nearMaxX; x++) {
+                    for (int y = nearMinY; y <= nearMaxY; y++) {
+                        for (int z = nearMinZ; z <= nearMaxZ; z++) {
+                            long key = packPosKey(x, y, z);
+                            if (!visited.add(key)) {
+                                continue;
+                            }
+
+                            scanPos.set(x, y, z);
+                            if (checkCanAdd(scanPos)) {
+                                addResult(scanPos);
+                                if (curCount >= minerConfig.blockLimit) {
+                                    return;
+                                }
+                            }
+
+                            waitUntil();
+                            if (Thread.currentThread().isInterrupted()) {
                                 return;
                             }
-                            frontier.offer(new Vector3i(scanPos));
-                        }
-
-                        waitUntil();
-                        if (Thread.currentThread().isInterrupted()) {
-                            return;
                         }
                     }
                 }
             }
+        } finally {
+            bfsReady = false;
+            frontier.clear();
+            frontierSeeded.clear();
         }
     }
 
@@ -102,6 +142,25 @@ public class ChainPositionFounder extends BasePositionFounder {
 
         if (player.capabilities.isCreativeMode) return true;
         return block.canHarvestBlock(player, blockMeta);
+    }
+
+    @Override
+    public void addResult(Vector3i pos) {
+        boolean existedBefore = foundedPositions.contains(pos);
+        super.addResult(pos);
+        if (!bfsReady || frontier == null || frontierSeeded == null || existedBefore) {
+            return;
+        }
+        if (foundedPositions.contains(pos)) {
+            enqueueFrontier(pos);
+        }
+    }
+
+    private void enqueueFrontier(Vector3i pos) {
+        long key = packPosKey(pos.x, pos.y, pos.z);
+        if (frontierSeeded.add(key)) {
+            frontier.offer(new Vector3i(pos));
+        }
     }
 
     private static long packPosKey(int x, int y, int z) {
