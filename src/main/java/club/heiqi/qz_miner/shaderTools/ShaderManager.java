@@ -141,8 +141,9 @@ public class ShaderManager {
         int location = getUniformLocation(name);
         if (location != -1) {
             matrixBuffer.clear();
-            value.get(matrixBuffer);
-            matrixBuffer.flip();
+            // JOML get(FloatBuffer) 不会推进 position，直接按固定索引写入以避免空缓冲上传。
+            value.get(0, matrixBuffer);
+            matrixBuffer.position(0);
             GL20.glUniformMatrix4(location, false, matrixBuffer);
         }
     }
