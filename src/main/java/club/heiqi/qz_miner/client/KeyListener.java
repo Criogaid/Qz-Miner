@@ -35,19 +35,13 @@ public class KeyListener {
             "key.qz_miner.mainModeSwitch", Keyboard.KEY_V/*鼠标中键*/, "key.categories.qz_miner"
     );
     public boolean onChain = false;
+    public boolean onMainModeSwitch = false;
 
     @SubscribeEvent
     public void onInput(InputEvent event) {
-        // ========== 切换主模式 ==========
-        MinerModeState minerModeState = ((ClientProxy) MyMod.proxy).clientState.minerModeState;
-        if (mainModeSwitch.isPressed()) {
-            // 打印提示 - 切换到下一个主模式
-            MessageUtils.printSelfMessage("当前模式: "+I18n.format(minerModeState.nextMainMode()));
-            // 网络同步当前模式
-            MyMod.networkMain.network.sendToServer(new PacketMinerModeState(minerModeState));
-        }
         // ========== 按住连锁键 + 滚轮切换子模式 ==========
         if (onChain && event instanceof InputEvent.MouseInputEvent && Mouse.getEventDWheel() != 0) {
+            MinerModeState minerModeState = ((ClientProxy) MyMod.proxy).clientState.minerModeState;
             int dWheel = Mouse.getEventDWheel();
             if (dWheel < 0) {
                 minerModeState.nextSecondMode();
@@ -66,8 +60,11 @@ public class KeyListener {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
-        boolean pressed = mc.currentScreen == null && Keyboard.isKeyDown(chainSwitch.getKeyCode());
-        handleChainKeyState(pressed);
+        boolean noScreen = mc.currentScreen == null;
+        boolean chainPressed = noScreen && isBindingPressed(chainSwitch);
+        boolean mainModePressed = noScreen && isBindingPressed(mainModeSwitch);
+        handleChainKeyState(chainPressed);
+        handleMainModeKeyState(mainModePressed);
     }
 
     private void handleChainKeyState(boolean pressed) {
@@ -83,6 +80,23 @@ public class KeyListener {
             ((ClientProxy) MyMod.proxy).minerRenderer.inPressChainKey = false;
         }
         onChain = pressed;
+    }
+
+    private void handleMainModeKeyState(boolean pressed) {
+        if (pressed && !onMainModeSwitch) {
+            MinerModeState minerModeState = ((ClientProxy) MyMod.proxy).clientState.minerModeState;
+            MessageUtils.printSelfMessage("当前模式: " + I18n.format(minerModeState.nextMainMode()));
+            MyMod.networkMain.network.sendToServer(new PacketMinerModeState(minerModeState));
+        }
+        onMainModeSwitch = pressed;
+    }
+
+    private static boolean isBindingPressed(KeyBinding keyBinding) {
+        int keyCode = keyBinding.getKeyCode();
+        if (keyCode < 0) {
+            return Mouse.isButtonDown(keyCode + 100);
+        }
+        return Keyboard.isKeyDown(keyCode);
     }
 
     public void registry() {
