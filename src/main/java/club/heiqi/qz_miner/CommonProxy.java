@@ -1,12 +1,15 @@
 package club.heiqi.qz_miner;
 
 import club.heiqi.qz_miner.core.PlayerManager;
+import club.heiqi.qz_miner.lootgame.LootGameMineRevealServer;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 
 public class CommonProxy {
+    public LootGameMineRevealServer lootGameMineRevealServer = new LootGameMineRevealServer();
+
     // preInit "Run before anything else. Read your config, create blocks, items, etc, and register them with the
     // GameRegistry." (Remove if not needed)
     public void preInit(FMLPreInitializationEvent event) {
@@ -26,5 +29,6 @@ public class CommonProxy {
     public void serverStarting(FMLServerStartingEvent event) {
         MyMod.playerManager = new PlayerManager();
         MyMod.playerManager.registry();
+        lootGameMineRevealServer.register();
     }
 }

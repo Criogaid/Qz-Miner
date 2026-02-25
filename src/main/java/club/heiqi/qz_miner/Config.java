@@ -17,9 +17,15 @@ public class Config {
     public static int smallRadius = 2;
     public static int tunnelWidth = 1;
     public static boolean safeAsyncWorldAccess = true;
+    public static boolean enableLootGameMineReveal = true;
+    public static int lootGameMineRevealScanRadius = 2;
+    public static double lootGameMineRevealHoldSeconds = 5.0D;
+    public static double lootGameMineRevealCooldownSeconds = 30.0D;
+    public static double lootGameMineRevealRenderSeconds = 5.0D;
 
     public static final String CLIENT_CATEGORY = "Client";
     public static boolean usePreview = true, useChainDoneMessage = true;
+    public static double lootGameMineRevealLineWidth = 1.5D;
     public static double addExhaustion;
 
     public void init(File configFile) {
@@ -41,6 +47,52 @@ public class Config {
                 true,
                 "启用异步世界访问保护: 在非服务器线程中避免触发区块加载和TileEntity访问"
         );
+        enableLootGameMineReveal = config.getBoolean(
+                "enableLootGameMineReveal",
+                Configuration.CATEGORY_GENERAL,
+                true,
+                "启用 LootGames 扫雷揭示功能（按住连锁键达到蓄力后揭示最近地雷）"
+        );
+        lootGameMineRevealScanRadius = config.getInt(
+                "lootGameMineRevealScanRadius",
+                Configuration.CATEGORY_GENERAL,
+                2,
+                1,
+                16,
+                "LootGames 扫雷方块搜索半径"
+        );
+        lootGameMineRevealHoldSeconds = config.get(
+                Configuration.CATEGORY_GENERAL,
+                "lootGameMineRevealHoldSeconds",
+                5.0D,
+                "LootGames 扫雷揭示触发前需要持续按住连锁键的秒数",
+                0.0D,
+                60.0D
+        ).getDouble();
+        lootGameMineRevealCooldownSeconds = config.get(
+                Configuration.CATEGORY_GENERAL,
+                "lootGameMineRevealCooldownSeconds",
+                30.0D,
+                "LootGames 扫雷揭示冷却时间（秒）",
+                0.0D,
+                3600.0D
+        ).getDouble();
+        lootGameMineRevealRenderSeconds = config.get(
+                CLIENT_CATEGORY,
+                "lootGameMineRevealRenderSeconds",
+                5.0D,
+                "LootGames 扫雷揭示结果在客户端保留渲染时长（秒）",
+                0.0D,
+                60.0D
+        ).getDouble();
+        lootGameMineRevealLineWidth = config.get(
+                CLIENT_CATEGORY,
+                "lootGameMineRevealLineWidth",
+                1.5D,
+                "LootGames 扫雷揭示线框粗细",
+                0.1D,
+                10.0D
+        ).getDouble();
         addExhaustion = config.get(CLIENT_CATEGORY, "addExhaustion", 0.025, "每次挖掘增加的饥饿值", -Double.MAX_VALUE, Double.MAX_VALUE).getDouble();
 
         usePreview = config.getBoolean("usePreview", CLIENT_CATEGORY, true, "是否使用连锁预览功能");

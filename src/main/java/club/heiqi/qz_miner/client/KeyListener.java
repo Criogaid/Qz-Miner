@@ -12,8 +12,10 @@ import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.common.MinecraftForge;
@@ -44,47 +46,43 @@ public class KeyListener {
             // 网络同步当前模式
             MyMod.networkMain.network.sendToServer(new PacketMinerModeState(minerModeState));
         }
-        // ========== 按下连锁键 ==========
-        if (chainSwitch.getIsKeyPressed()) {
-            // ===== 状态切换: 开始连锁 =====
-            if (!onChain) {
-                // ========== 修改连锁状态 ==========
-                // 发送网络包
-                MyMod.networkMain.network.sendToServer(new PacketChainSwitcher(true));
-                // 修改客户端字段
-                ((ClientProxy)MyMod.proxy).minerRenderer.inPressChainKey = true;
+        // ========== 按住连锁键 + 滚轮切换子模式 ==========
+        if (onChain && event instanceof InputEvent.MouseInputEvent && Mouse.getEventDWheel() != 0) {
+            int dWheel = Mouse.getEventDWheel();
+            if (dWheel < 0) {
+                minerModeState.nextSecondMode();
+            } else if (dWheel > 0) {
+                minerModeState.previousSecondMode();
+            }
+            // 网络同步当前子模式
+            MyMod.networkMain.network.sendToServer(new PacketMinerModeState(minerModeState));
+            MessageUtils.printSelfMessage("当前子模式: "+I18n.format(minerModeState.currentSecondMode()));
+        }
+    }
 
-                // ========== 同步连锁配置 ==========
-                MyMod.networkMain.network.sendToServer(new PacketMinerConfig(new MinerConfig()));
-            }
-            // ===== 持续连锁状态 =====
-            onChain = true;
-            // ========== 滚轮切换子模式 ==========
-            if (event instanceof InputEvent.MouseInputEvent && Mouse.getEventDWheel() != 0) {
-                int dWheel = Mouse.getEventDWheel();
-                if (dWheel < 0) {
-                    minerModeState.nextSecondMode();
-                } else if (dWheel > 0) {
-                    minerModeState.previousSecondMode();
-                }
-                // 网络同步当前子模式
-                MyMod.networkMain.network.sendToServer(new PacketMinerModeState(minerModeState));
-                MessageUtils.printSelfMessage("当前子模式: "+I18n.format(minerModeState.currentSecondMode()));
-            }
+    @SubscribeEvent
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.ClientTickEvent.Phase.END) {
+            return;
         }
-        // ========== 松开连锁键 ==========
-        if (!chainSwitch.getIsKeyPressed()) {
-            // ===== 状态切换: 关闭连锁 =====
-            if (onChain) {
-                // ========== 修改连锁状态 ==========
-                // 发送网络包
-                MyMod.networkMain.network.sendToServer(new PacketChainSwitcher(false));
-                // 修改客户端字段
-                ((ClientProxy)MyMod.proxy).minerRenderer.inPressChainKey = false;
-            }
-            onChain = false;
-            // ===== 连锁持续关闭 =====
+        Minecraft mc = Minecraft.getMinecraft();
+        boolean pressed = mc.currentScreen == null && Keyboard.isKeyDown(chainSwitch.getKeyCode());
+        handleChainKeyState(pressed);
+    }
+
+    private void handleChainKeyState(boolean pressed) {
+        // ===== 状态切换: 开始连锁 =====
+        if (pressed && !onChain) {
+            MyMod.networkMain.network.sendToServer(new PacketChainSwitcher(true));
+            ((ClientProxy) MyMod.proxy).minerRenderer.inPressChainKey = true;
+            MyMod.networkMain.network.sendToServer(new PacketMinerConfig(new MinerConfig()));
         }
+        // ===== 状态切换: 关闭连锁 =====
+        if (!pressed && onChain) {
+            MyMod.networkMain.network.sendToServer(new PacketChainSwitcher(false));
+            ((ClientProxy) MyMod.proxy).minerRenderer.inPressChainKey = false;
+        }
+        onChain = pressed;
     }
 
     public void registry() {

@@ -19,3 +19,6 @@ qz_miner.textTips.interactMode.blindBlastMode=范围非空气液体选择器
 qz_miner.textTips.interactMode.screenBlastingMode=范围同类筛选器
 qz_miner.textTips.interactMode.liquidMode=流体搜索器
 qz_miner.textTips.interactMode.cropMode=作物搜索器
+
+qz_miner.textTips.mineRevealMode=扫雷模式
+qz_miner.textTips.mineRevealMode.baseMode=扫雷揭示

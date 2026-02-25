@@ -16,5 +16,7 @@ public class NetworkMain {
         network.registerMessage(PacketMinerConfig.PacketMinerConfigHandler.class, PacketMinerConfig.class, packetID++, Side.CLIENT);
         // 注册连锁模式网络
         network.registerMessage(PacketMinerModeState.PacketMinerModeStateHandler.class, PacketMinerModeState.class, packetID++, Side.SERVER);
+        // 注册扫雷揭示回包
+        network.registerMessage(PacketSweepMine.PacketSweepMineHandler.class, PacketSweepMine.class, packetID++, Side.CLIENT);
     }
 }

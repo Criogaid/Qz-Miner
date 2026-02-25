@@ -50,7 +50,7 @@ public class Manager {
     @SubscribeEvent
     public void onBlockBreakEvent(BlockEvent.BreakEvent event) {
         // 0.是交互模式 1.不是同一个玩家且不是服务器线程
-        if (minerModeState.isInteractMode() || !isSamePlayer_checkOnServer(event.getPlayer(), playerUUID))
+        if (!minerModeState.isBreakMode() || !isSamePlayer_checkOnServer(event.getPlayer(), playerUUID))
             return;
         // 正在连锁中 或 未按下连锁键 不处理 避免重复触发连锁
         if (inOperate || !inPressChainKey) {

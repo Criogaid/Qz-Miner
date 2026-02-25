@@ -24,10 +24,12 @@ public class PacketMinerModeState implements IMessage {
     }
 
     public void fromBytes(ByteBuf buf) {
-        state.mainMode = IMath.clamp(buf.readInt(), 0, MinerModeState.MAIN_MODE.length);
-        state.rangeMode = IMath.clamp(buf.readInt(), 0, MinerModeState.RANGE_MODE.length);
-        state.chainMode = IMath.clamp(buf.readInt(), 0, MinerModeState.CHAIN_MODE.length);
-        state.interactMode = IMath.clamp(buf.readInt(), 0, MinerModeState.INTERACT_MODE.length);
+        state.mainMode = IMath.clamp(readOptionalInt(buf, 0), 0, MinerModeState.MAIN_MODE.length - 1);
+        state.rangeMode = IMath.clamp(readOptionalInt(buf, 0), 0, MinerModeState.RANGE_MODE.length - 1);
+        state.chainMode = IMath.clamp(readOptionalInt(buf, 0), 0, MinerModeState.CHAIN_MODE.length - 1);
+        state.interactMode = IMath.clamp(readOptionalInt(buf, 0), 0, MinerModeState.INTERACT_MODE.length - 1);
+        // 向后兼容旧协议（仅4个int），缺失字段按默认子模式0处理。
+        state.mineRevealMode = IMath.clamp(readOptionalInt(buf, 0), 0, MinerModeState.MINE_REVEAL_MODE.length - 1);
     }
 
     public void toBytes(ByteBuf buf) {
@@ -35,6 +37,11 @@ public class PacketMinerModeState implements IMessage {
         buf.writeInt(state.rangeMode);
         buf.writeInt(state.chainMode);
         buf.writeInt(state.interactMode);
+        buf.writeInt(state.mineRevealMode);
+    }
+
+    private static int readOptionalInt(ByteBuf buf, int defaultValue) {
+        return buf.readableBytes() >= 4 ? buf.readInt() : defaultValue;
     }
 
     public static class PacketMinerModeStateHandler implements IMessageHandler<PacketMinerModeState, IMessage> {

@@ -14,6 +14,7 @@ public class MinerModeState {
             "qz_miner.textTips.rangeMode",      // 0 爆破模式
             "qz_miner.textTips.chainMode",      // 1 连锁模式
             "qz_miner.textTips.interactMode",   // 2 交互模式
+            "qz_miner.textTips.mineRevealMode", // 3 扫雷模式
     };
 
     public static final String[] RANGE_MODE = {
@@ -35,14 +36,26 @@ public class MinerModeState {
             "qz_miner.textTips.interactMode.liquidMode",            // 流体搜索模式 3
             "qz_miner.textTips.interactMode.cropMode",              // 作物搜索器 4
     };
+    public static final String[] MINE_REVEAL_MODE = {
+            "qz_miner.textTips.mineRevealMode.baseMode",            // 扫雷揭示模式 0
+    };
 
     public int mainMode = 1;
     public int rangeMode = 0;
     public int chainMode = 0;
     public int interactMode = 0;
+    public int mineRevealMode = 0;
 
     public boolean isInteractMode() {
         return mainMode == 2;
+    }
+
+    public boolean isMineRevealMode() {
+        return mainMode == 3;
+    }
+
+    public boolean isBreakMode() {
+        return mainMode == 0 || mainMode == 1;
     }
 
     // ========== 主模式 ==========
@@ -69,6 +82,9 @@ public class MinerModeState {
             case 2 -> {
                 return nextInteractMode();
             }
+            case 3 -> {
+                return nextMineRevealMode();
+            }
             default -> {
                 return nextRangeMode();
             }
@@ -83,6 +99,9 @@ public class MinerModeState {
             case 2 -> {
                 return previousInteractMode();
             }
+            case 3 -> {
+                return previousMineRevealMode();
+            }
             default -> {
                 return previousRangeMode();
             }
@@ -96,6 +115,9 @@ public class MinerModeState {
             }
             case 2 -> {
                 return currentInteractMode();
+            }
+            case 3 -> {
+                return currentMineRevealMode();
             }
             default -> {
                 return currentRangeMode();
@@ -148,6 +170,21 @@ public class MinerModeState {
         return INTERACT_MODE[interactMode];
     }
 
+    // ========== 扫雷模式 ==========
+    public String nextMineRevealMode() {
+        mineRevealMode = (mineRevealMode + 1) % MINE_REVEAL_MODE.length;
+        return currentMineRevealMode();
+    }
+
+    public String previousMineRevealMode() {
+        mineRevealMode = (mineRevealMode - 1 + MINE_REVEAL_MODE.length) % MINE_REVEAL_MODE.length;
+        return currentMineRevealMode();
+    }
+
+    public String currentMineRevealMode() {
+        return MINE_REVEAL_MODE[mineRevealMode];
+    }
+
     public BasePositionFounder createPositionFounder(Vector3i center, LinkedBlockingQueue<Vector3i> results, EntityPlayer player, MinerConfig config) {
         switch (mainMode) {
             case 1 -> {
@@ -175,6 +212,10 @@ public class MinerModeState {
                         return new ChainPositionFounder(center, results, player, config);
                     }
                 }
+            }
+            case 3 -> {
+                // 扫雷模式不参与方块连锁搜索，返回一个最小搜索器兜底（正常流程不会进入）。
+                return new BasePositionFounder(center, results, player, config);
             }
             default -> { // 0
                 switch (rangeMode) {

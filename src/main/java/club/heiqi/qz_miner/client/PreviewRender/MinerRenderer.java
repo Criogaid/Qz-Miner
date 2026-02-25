@@ -1,6 +1,8 @@
 package club.heiqi.qz_miner.client.PreviewRender;
 
+import club.heiqi.qz_miner.ClientProxy;
 import club.heiqi.qz_miner.Config;
+import club.heiqi.qz_miner.MyMod;
 import club.heiqi.qz_miner.core.BaseChainViewer;
 import club.heiqi.qz_miner.utils.MatrixUtils;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -25,6 +27,11 @@ public class MinerRenderer {
     public Vector3i lastTarget = new Vector3i(Integer.MIN_VALUE);
     @SubscribeEvent
     public void onBlockHighLight(DrawBlockHighlightEvent event) {
+        if (isMineRevealMode()) {
+            onNotPressChainKey();
+            return;
+        }
+
         if (!Config.usePreview) return;  // 在更早的地方执行返回，连ChainViewer都不要创建
         // renderAxis();
         // 如果没有按下连锁键，不执行逻辑
@@ -40,6 +47,10 @@ public class MinerRenderer {
             onPressButChangeTarget();
         }
         previewRender();
+    }
+
+    private boolean isMineRevealMode() {
+        return ((ClientProxy) MyMod.proxy).clientState.minerModeState.isMineRevealMode();
     }
 
     private void previewRender() {
