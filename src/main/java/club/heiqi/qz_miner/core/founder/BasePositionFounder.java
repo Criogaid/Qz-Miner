@@ -64,14 +64,17 @@ public class BasePositionFounder extends Pauseable {
     @Override
     public void run1() {
         int curRadius = 1;
+        Vector3i scanPos = new Vector3i();
         while (curCount < minerConfig.blockLimit && curRadius <= minerConfig.bigRadius) {
             // LOG.info("当前半径: {} 当前块数: {}", curRadius, curCount);
             for (int x = center.x - curRadius; x <= center.x + curRadius; x++) {
-                for (int y = center.y - curRadius; y <= center.y + curRadius; y++) {
+                int minY = Math.max(center.y - curRadius, 0);
+                int maxY = Math.min(center.y + curRadius, 255);
+                for (int y = minY; y <= maxY; y++) {
                     for (int z = center.z - curRadius; z <= center.z + curRadius; z++) {
-                        Vector3i pos = new Vector3i(x, y, z);
-                        if (checkCanAdd(pos)) {
-                            this.addResult(pos);
+                        scanPos.set(x, y, z);
+                        if (checkCanAdd(scanPos)) {
+                            this.addResult(scanPos);
                         }
                         if (curCount >= minerConfig.blockLimit) {
                             return;
@@ -100,10 +103,9 @@ public class BasePositionFounder extends Pauseable {
         if (block.equals(Blocks.air) || block.getMaterial().isLiquid() || block.equals(Blocks.bedrock)) {
             return false;
         }
-        Vector3i playerPos = new Vector3i((int) Math.floor(player.posX), (int) Math.floor(player.posY), (int) Math.floor(player.posZ));
 
         // 玩家脚下的一个方块不能被挖掘
-        if (pos.x == playerPos.x && pos.y == (playerPos.y - 1) && pos.z == playerPos.z) {
+        if (isPlayerFootBlock(pos)) {
             return false;
         }
 
@@ -203,7 +205,15 @@ public class BasePositionFounder extends Pauseable {
     }
 
     protected boolean isServerThread() {
-        return Thread.currentThread().getName().toLowerCase().contains("server");
+        String threadName = Thread.currentThread().getName();
+        return threadName.contains("server") || threadName.contains("Server");
+    }
+
+    protected boolean isPlayerFootBlock(Vector3i pos) {
+        int playerX = (int) Math.floor(player.posX);
+        int playerY = (int) Math.floor(player.posY);
+        int playerZ = (int) Math.floor(player.posZ);
+        return pos.x == playerX && pos.y == (playerY - 1) && pos.z == playerZ;
     }
 
     protected boolean shouldGuardAsyncWorldAccess() {

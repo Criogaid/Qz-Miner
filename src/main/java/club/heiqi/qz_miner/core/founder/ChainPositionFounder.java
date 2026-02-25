@@ -17,14 +17,17 @@ public class ChainPositionFounder extends BasePositionFounder {
     @Override
     public void run1() {
         int curRadius = 1;
+        Vector3i scanPos = new Vector3i();
         while (curCount < minerConfig.blockLimit && curRadius <= minerConfig.bigRadius) {
             for (int x = center.x - curRadius; x <= center.x + curRadius; x++) {
-                for (int y = center.y - curRadius; y <= center.y + curRadius; y++) {
+                int minY = Math.max(center.y - curRadius, 0);
+                int maxY = Math.min(center.y + curRadius, 255);
+                for (int y = minY; y <= maxY; y++) {
                     for (int z = center.z - curRadius; z <= center.z + curRadius; z++) {
-                        Vector3i pos = new Vector3i(x, y, z);
+                        scanPos.set(x, y, z);
 
-                        if (checkCanAdd(pos)) {
-                            this.addResult(pos);
+                        if (checkCanAdd(scanPos)) {
+                            this.addResult(scanPos);
                         }
 
                         // 检查性流程    检查数量     检查线程是否被中断
@@ -61,12 +64,11 @@ public class ChainPositionFounder extends BasePositionFounder {
         if (block.equals(Blocks.air) || block.getMaterial().isLiquid() || block.equals(Blocks.bedrock)) {
             return false;
         }
-        Vector3i playerPos = new Vector3i((int) Math.floor(player.posX), (int) Math.floor(player.posY), (int) Math.floor(player.posZ));
         int blockMeta = getBlockMetaAt(pos);
 
 
         // 玩家脚下的一个方块不能被挖掘
-        if (pos.x == playerPos.x && pos.y == (playerPos.y - 1) && pos.z == playerPos.z) {
+        if (isPlayerFootBlock(pos)) {
             return false;
         }
 
@@ -84,10 +86,9 @@ public class ChainPositionFounder extends BasePositionFounder {
         boolean inRange = false;
         for (Vector3i position : foundedPositions) {
             // 判断点 X Y Z 距离 及其曼哈顿距离
-            Vector3i offsetDistance = new Vector3i(position).sub(pos);
-            int xOffset = Math.abs(offsetDistance.x);
-            int yOffset = Math.abs(offsetDistance.y);
-            int zOffset = Math.abs(offsetDistance.z);
+            int xOffset = Math.abs(position.x - pos.x);
+            int yOffset = Math.abs(position.y - pos.y);
+            int zOffset = Math.abs(position.z - pos.z);
 
             if (xOffset <= minerConfig.smallRadius &&
                     yOffset <= minerConfig.smallRadius &&
