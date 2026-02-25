@@ -108,6 +108,10 @@ public class KeyListener {
             return;
         }
         lastWorldIdentity = worldIdentity;
+        // 世界切换时主动同步关闭连锁，避免服务端残留 inPressChainKey=true。
+        if (onChain && mc.getNetHandler() != null) {
+            MyMod.networkMain.network.sendToServer(new PacketChainSwitcher(false));
+        }
         onChain = false;
         onMainModeSwitch = false;
         ((ClientProxy) MyMod.proxy).minerRenderer.inPressChainKey = false;
