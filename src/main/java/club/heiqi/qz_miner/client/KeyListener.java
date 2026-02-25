@@ -17,6 +17,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.world.World;
 import net.minecraftforge.client.event.MouseEvent;
 import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
@@ -36,6 +37,8 @@ public class KeyListener {
     );
     public boolean onChain = false;
     public boolean onMainModeSwitch = false;
+    private int lastWorldIdentity = 0;
+    private boolean pendingReconnectModeSync = false;
 
     @SubscribeEvent
     public void onMouseEvent(MouseEvent event) {
@@ -67,7 +70,11 @@ public class KeyListener {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
+        trackWorldChangeAndScheduleSync(mc);
+
         boolean noScreen = mc.currentScreen == null;
+        syncModeAfterReconnectIfNeeded(mc, noScreen);
+
         boolean chainPressed = noScreen && isBindingPressed(chainSwitch);
         boolean mainModePressed = noScreen && isBindingPressed(mainModeSwitch);
         handleChainKeyState(chainPressed);
@@ -78,8 +85,13 @@ public class KeyListener {
         // ===== 状态切换: 开始连锁 =====
         if (pressed && !onChain) {
             MyMod.networkMain.network.sendToServer(new PacketChainSwitcher(true));
-            ((ClientProxy) MyMod.proxy).minerRenderer.inPressChainKey = true;
-            MyMod.networkMain.network.sendToServer(new PacketMinerConfig(new MinerConfig()));
+            MinerModeState minerModeState = ((ClientProxy) MyMod.proxy).clientState.minerModeState;
+            boolean mineRevealMode = minerModeState.isMineRevealMode();
+            // 扫雷模式不应启动本地连锁预览线程，避免无意义搜索占用客户端。
+            ((ClientProxy) MyMod.proxy).minerRenderer.inPressChainKey = !mineRevealMode;
+            if (!mineRevealMode) {
+                MyMod.networkMain.network.sendToServer(new PacketMinerConfig(new MinerConfig()));
+            }
         }
         // ===== 状态切换: 关闭连锁 =====
         if (!pressed && onChain) {
@@ -87,6 +99,33 @@ public class KeyListener {
             ((ClientProxy) MyMod.proxy).minerRenderer.inPressChainKey = false;
         }
         onChain = pressed;
+    }
+
+    private void trackWorldChangeAndScheduleSync(Minecraft mc) {
+        World world = mc.theWorld;
+        int worldIdentity = world == null ? 0 : System.identityHashCode(world);
+        if (worldIdentity == lastWorldIdentity) {
+            return;
+        }
+        lastWorldIdentity = worldIdentity;
+        onChain = false;
+        onMainModeSwitch = false;
+        ((ClientProxy) MyMod.proxy).minerRenderer.inPressChainKey = false;
+        ((ClientProxy) MyMod.proxy).minerRenderer.refreshPreviewAfterModeChanged();
+        pendingReconnectModeSync = world != null;
+    }
+
+    private void syncModeAfterReconnectIfNeeded(Minecraft mc, boolean noScreen) {
+        if (!pendingReconnectModeSync || !noScreen || mc.thePlayer == null) {
+            return;
+        }
+        // 延后到玩家完成登录初始化后再同步，避免服务端Manager尚未就绪导致首包丢失。
+        if (mc.thePlayer.ticksExisted < 20) {
+            return;
+        }
+        MinerModeState minerModeState = ((ClientProxy) MyMod.proxy).clientState.minerModeState;
+        MyMod.networkMain.network.sendToServer(new PacketMinerModeState(minerModeState));
+        pendingReconnectModeSync = false;
     }
 
     private void handleMainModeKeyState(boolean pressed) {
