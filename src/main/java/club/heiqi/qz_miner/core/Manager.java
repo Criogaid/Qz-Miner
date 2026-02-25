@@ -1,7 +1,6 @@
 package club.heiqi.qz_miner.core;
 
 import club.heiqi.qz_miner.Config;
-import club.heiqi.qz_miner.core.founder.DeterminingIdentical;
 import club.heiqi.qz_miner.utils.PlayerUuidCompat;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -11,7 +10,9 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -21,6 +22,9 @@ import org.apache.logging.log4j.Logger;
 import org.joml.Vector3i;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -95,18 +99,15 @@ public class Manager {
         }
 
         // 收集掉落物
-        for (ItemStack drop : event.drops) {
-            boolean merged = false;  // 是否合并到容器内了
-            // 对比收集容器中的
-            for (ItemStack container : drops) {
-                if (!DeterminingIdentical.isSame(container, drop)) continue;
-                container.stackSize += drop.stackSize;
-                drop.stackSize = 0;
-                merged = true;
-                break;
-            }
-            if (!merged) drops.add(drop);
+        LinkedHashMap<DropKey, ItemStack> mergedDrops = new LinkedHashMap<>();
+        for (ItemStack container : drops) {
+            mergeDropStack(mergedDrops, container);
         }
+        for (ItemStack drop : event.drops) {
+            mergeDropStack(mergedDrops, drop);
+        }
+        drops.clear();
+        drops.addAll(mergedDrops.values());
 
         // 阻止原始掉落
         event.drops.clear();
@@ -177,5 +178,51 @@ public class Manager {
                 && Thread.currentThread().getName().toLowerCase().contains("server")  // 3.发生在服务器线程
                 && !(player instanceof FakePlayer)  // 4.不是假玩家
         );
+    }
+
+    private static void mergeDropStack(Map<DropKey, ItemStack> mergedDrops, ItemStack stack) {
+        if (stack == null || stack.stackSize <= 0) {
+            return;
+        }
+        DropKey key = DropKey.of(stack);
+        ItemStack existing = mergedDrops.get(key);
+        if (existing == null) {
+            mergedDrops.put(key, stack);
+            return;
+        }
+        existing.stackSize += stack.stackSize;
+    }
+
+    private static final class DropKey {
+        private final Item item;
+        private final int itemDamage;
+        private final NBTTagCompound tagSnapshot;
+
+        private DropKey(Item item, int itemDamage, NBTTagCompound tagSnapshot) {
+            this.item = item;
+            this.itemDamage = itemDamage;
+            this.tagSnapshot = tagSnapshot;
+        }
+
+        private static DropKey of(ItemStack stack) {
+            NBTTagCompound tag = stack.getTagCompound();
+            NBTTagCompound tagCopy = tag == null ? null : (NBTTagCompound) tag.copy();
+            return new DropKey(stack.getItem(), stack.getItemDamage(), tagCopy);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (!(o instanceof DropKey)) return false;
+            DropKey dropKey = (DropKey) o;
+            return itemDamage == dropKey.itemDamage
+                    && Objects.equals(item, dropKey.item)
+                    && Objects.equals(tagSnapshot, dropKey.tagSnapshot);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(item, itemDamage, tagSnapshot);
+        }
     }
 }
