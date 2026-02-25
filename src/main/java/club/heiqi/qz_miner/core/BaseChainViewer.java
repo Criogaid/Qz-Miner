@@ -85,10 +85,9 @@ public class BaseChainViewer {
             if (positionFounder.stopped.get()) foundComplete = true;
             while (System.currentTimeMillis() - startTime < waitAddTimeMillisecond && addCount < perTickMaxAdd) {
                 Vector3i point = canBreakPositions.poll();
-                if (point != null) {
-                    spaceCalculator.add(point);
-                    addCount++;
-                }
+                if (point == null) break;
+                spaceCalculator.add(point);
+                addCount++;
             }
             // 仅在数据变化时重建并上传，避免每帧重复全量计算与传输。
             if (spaceCalculator.hasChange) {
