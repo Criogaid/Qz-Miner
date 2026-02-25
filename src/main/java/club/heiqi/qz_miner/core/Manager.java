@@ -98,11 +98,12 @@ public class Manager {
         for (ItemStack drop : event.drops) {
             boolean merged = false;  // 是否合并到容器内了
             // 对比收集容器中的
-            for (ItemStack container : new ArrayList<>(drops)) {
+            for (ItemStack container : drops) {
                 if (!DeterminingIdentical.isSame(container, drop)) continue;
                 container.stackSize += drop.stackSize;
                 drop.stackSize = 0;
                 merged = true;
+                break;
             }
             if (!merged) drops.add(drop);
         }
