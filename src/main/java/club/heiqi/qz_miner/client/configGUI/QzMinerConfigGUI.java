@@ -17,7 +17,7 @@ public class QzMinerConfigGUI extends GuiConfig {
     public QzMinerConfigGUI(GuiScreen parentScreen) {
         super(
             parentScreen,
-            getConfigElements(),// new ConfigElement(Config.config.getCategory(Configuration.CATEGORY_GENERAL)).getChildElements(),
+            toLegacyConfigElements(getConfigElements()),// new ConfigElement(Config.config.getCategory(Configuration.CATEGORY_GENERAL)).getChildElements(),
             Constant.MODID,
             false,
             false,
@@ -25,15 +25,20 @@ public class QzMinerConfigGUI extends GuiConfig {
             GuiConfig.getAbridgedConfigPath(Config.configPath));
     }
 
-    private static List<IConfigElement> getConfigElements() {
-        List<IConfigElement> elements = new ArrayList<>();
+    private static List<IConfigElement<?>> getConfigElements() {
+        List<IConfigElement<?>> elements = new ArrayList<>();
 
         List<String> topCategories = Arrays.asList(Configuration.CATEGORY_GENERAL);
         for (String categoryName : topCategories) {
             ConfigCategory category = Config.config.getCategory(categoryName);
-            elements.add(new ConfigElement(category));
+            elements.add(new ConfigElement<>(category));
         }
 
         return elements;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static List<IConfigElement> toLegacyConfigElements(List<IConfigElement<?>> elements) {
+        return (List) elements;
     }
 }

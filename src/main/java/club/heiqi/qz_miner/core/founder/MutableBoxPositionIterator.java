@@ -6,7 +6,6 @@ import org.joml.Vector3i;
  * 复用式包围盒坐标迭代器，按 x -> y -> z 顺序遍历，避免在热路径中构造 Stream/临时集合。
  */
 final class MutableBoxPositionIterator {
-    private int minX;
     private int maxX;
     private int minY;
     private int maxY;
@@ -18,7 +17,6 @@ final class MutableBoxPositionIterator {
     private boolean hasNext;
 
     public void reset(int minX, int maxX, int minY, int maxY, int minZ, int maxZ) {
-        this.minX = minX;
         this.maxX = maxX;
         this.minY = minY;
         this.maxY = maxY;

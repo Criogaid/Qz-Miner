@@ -63,16 +63,15 @@ public class TunnelBlastingFounder extends BasePositionFounder {
 
     public Vector3i getAxisAlignedLookDir() {
         EntityPlayer player = this.player;
-        float yaw = player.rotationYaw % 360;
+        float yaw = (player.rotationYaw % 360 + 360) % 360;
         float pitch = player.rotationPitch;
 
         if (pitch > 45) return new Vector3i(0,-1,0);
         else if (pitch < -45) return new Vector3i(0,1,0);
-        else if (yaw >= 315 || yaw < 45) return new Vector3i(0,0,1);
-        else if (yaw >= 45 && yaw < 135) return new Vector3i(-1,0,0);
-        else if (yaw >= 135 && yaw < 225) return new Vector3i(0,0,-1);
-        else if (yaw >= 225 && yaw < 315) return new Vector3i(1,0,0);
-        else throw new RuntimeException("玩家进入未知角度！");
+        else if (yaw < 45 || yaw >= 315) return new Vector3i(0,0,1);
+        else if (yaw < 135) return new Vector3i(-1,0,0);
+        else if (yaw < 225) return new Vector3i(0,0,-1);
+        else return new Vector3i(1,0,0);
     }
 
     public ArrayList<Vector3i> getVerticalAxisComponent(Vector3i axisDir) {

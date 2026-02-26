@@ -13,14 +13,12 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class ChainPositionFounder extends BasePositionFounder {
-    private LinkedBlockingQueue<Vector3i> frontier;
-    private Set<Long> frontierSeeded;
+    private final LinkedBlockingQueue<Vector3i> frontier = new LinkedBlockingQueue<>();
+    private final Set<Long> frontierSeeded = ConcurrentHashMap.newKeySet();
     private volatile boolean bfsReady = false;
 
     public ChainPositionFounder(Vector3i center, LinkedBlockingQueue<Vector3i> results, EntityPlayer player, MinerConfig minerConfig) {
         super(center, results, player, minerConfig);
-        this.frontier = new LinkedBlockingQueue<>();
-        this.frontierSeeded = ConcurrentHashMap.newKeySet();
         setName("连锁搜索器");
     }
 
@@ -148,7 +146,7 @@ public class ChainPositionFounder extends BasePositionFounder {
     public void addResult(Vector3i pos) {
         boolean existedBefore = foundedPositions.contains(pos);
         super.addResult(pos);
-        if (!bfsReady || frontier == null || frontierSeeded == null || existedBefore) {
+        if (!bfsReady || existedBefore) {
             return;
         }
         if (foundedPositions.contains(pos)) {

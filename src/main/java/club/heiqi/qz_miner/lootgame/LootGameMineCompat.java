@@ -24,14 +24,9 @@ public final class LootGameMineCompat {
     private static volatile boolean initialized = false;
     private static volatile boolean available = false;
 
-    private static Class<?> blockPosClass;
     private static Class<?> msMasterTileClass;
-    private static Class<?> gameMasterTileClass;
-    private static Class<?> boardLootGameClass;
     private static Class<?> gameMineSweeperClass;
     private static Class<?> msBoardClass;
-    private static Class<?> pos2iClass;
-    private static Class<?> msTypeClass;
 
     private static Constructor<?> pos2iCtor;
 
@@ -179,16 +174,13 @@ public final class LootGameMineCompat {
     }
 
     private static double distanceSquaredToBoard(double px, double py, double pz, int originX, int originY, int originZ, int boardSize) {
-        double minX = originX;
         double maxX = originX + boardSize;
-        double minY = originY;
         double maxY = originY + 1.0D;
-        double minZ = originZ;
         double maxZ = originZ + boardSize;
 
-        double dx = distanceToRange(px, minX, maxX);
-        double dy = distanceToRange(py, minY, maxY);
-        double dz = distanceToRange(pz, minZ, maxZ);
+        double dx = distanceToRange(px, originX, maxX);
+        double dy = distanceToRange(py, originY, maxY);
+        double dz = distanceToRange(pz, originZ, maxZ);
         return dx * dx + dy * dy + dz * dz;
     }
 
@@ -228,14 +220,14 @@ public final class LootGameMineCompat {
 
             try {
                 // 仅加载服务端安全类，避免触发客户端专有类型（例如 IIconRegister）的类加载失败。
-                blockPosClass = Class.forName("ru.timeconqueror.lootgames.utils.future.BlockPos");
+                Class<?> blockPosClass = Class.forName("ru.timeconqueror.lootgames.utils.future.BlockPos");
                 msMasterTileClass = Class.forName("ru.timeconqueror.lootgames.common.block.tile.MSMasterTile");
-                gameMasterTileClass = Class.forName("ru.timeconqueror.lootgames.api.block.tile.GameMasterTile");
-                boardLootGameClass = Class.forName("ru.timeconqueror.lootgames.api.minigame.BoardLootGame");
+                Class<?> gameMasterTileClass = Class.forName("ru.timeconqueror.lootgames.api.block.tile.GameMasterTile");
+                Class<?> boardLootGameClass = Class.forName("ru.timeconqueror.lootgames.api.minigame.BoardLootGame");
                 gameMineSweeperClass = Class.forName("ru.timeconqueror.lootgames.minigame.minesweeper.GameMineSweeper");
                 msBoardClass = Class.forName("ru.timeconqueror.lootgames.minigame.minesweeper.MSBoard");
-                pos2iClass = Class.forName("ru.timeconqueror.lootgames.api.util.Pos2i");
-                msTypeClass = Class.forName("ru.timeconqueror.lootgames.minigame.minesweeper.Type");
+                Class<?> pos2iClass = Class.forName("ru.timeconqueror.lootgames.api.util.Pos2i");
+                Class<?> msTypeClass = Class.forName("ru.timeconqueror.lootgames.minigame.minesweeper.Type");
 
                 pos2iCtor = pos2iClass.getConstructor(int.class, int.class);
 
