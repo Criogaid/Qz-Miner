@@ -74,7 +74,7 @@ public class ParallelTick {
         if (normalTaskLock.isLocked()) {
             LOG.warn("通用并行同步线程被阻塞! [General-purpose parallel synchronous threads are blocked!]");
             return;
-        };
+        }
         normalTaskLock.lock();
         try {
             Iterator<Pauseable> iterator = normalTasks.iterator();
@@ -140,11 +140,6 @@ public class ParallelTick {
     }
 
     private static void removeStoppedTasks(ArrayList<Pauseable> tasks) {
-        Iterator<Pauseable> iterator = tasks.iterator();
-        while (iterator.hasNext()) {
-            if (iterator.next().stopped.get()) {
-                iterator.remove();
-            }
-        }
+        tasks.removeIf(pauseable -> pauseable.stopped.get());
     }
 }

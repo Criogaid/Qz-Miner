@@ -226,10 +226,6 @@ public class SpaceCalculator {
                 removeEdges(connectionDir);
             }
 
-            // // 加回所斜向连接的线段
-            // Set<Vector2i> sameLines = findOblique();
-            // completeIndex.addAll(sameLines);
-
             int[] result = getCompleteIndexByIntArray();
             blockRemovalTypes.put(new HashSet<>(connectionsSet), result.clone());
 

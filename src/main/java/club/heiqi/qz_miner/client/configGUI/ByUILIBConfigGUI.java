@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraftforge.common.config.ConfigCategory;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,8 +53,8 @@ public class ByUILIBConfigGUI extends ConfigGuiTemplate {
             categoryLabel.setPerfectSize(-1.0F, 64.0F);
 
             for(Map.Entry<String, Property> entry : category.entrySet()) {
-                String title = (String)entry.getKey();
-                Property property = (Property)entry.getValue();
+                String title = entry.getKey();
+                Property property = entry.getValue();
                 LabelWidget titleLabel = (new LabelWidget()).setText(title);
                 titleLabel.setTooltip(property.comment);
                 Property.Type type = property.getType();
@@ -69,23 +70,13 @@ public class ByUILIBConfigGUI extends ConfigGuiTemplate {
                             Consumer<String> onTextChange = (value) -> {
                                 int intValue = edit.getIntValue();
                                 if (intValue >= Integer.parseInt(property.getMinValue()) && intValue <= Integer.parseInt(property.getMaxValue())) {
-                                    this.saveOperators.put(title, (Runnable)() -> property.set(intValue));
+                                    this.saveOperators.put(title, () -> property.set(intValue));
                                 }
 
                             };
                             edit.setTextChangeCallBack(onTextChange);
 
-                            IntegerSliderWidget sliderWidget = new IntegerSliderWidget();
-                            int maxValue = Integer.parseInt(property.getMaxValue());
-                            if (title.equals("bigRadius")) maxValue = 128;
-                            else if (title.equals("blockLimit")) maxValue = 512000;
-                            else if (title.equals("smallRadius")) maxValue = 8;
-                            else if (title.equals("tunnelWidth")) maxValue = 16;
-                            sliderWidget.setRange(Integer.parseInt(property.getMinValue()), maxValue);
-                            sliderWidget.setSliderChangeCallBack((integer) -> {
-                                edit.setContent(integer.toString());
-                                this.saveOperators.put(title, (Runnable)() -> property.set(integer));
-                            });
+                            IntegerSliderWidget sliderWidget = getIntegerSliderWidget(property, title, edit);
                             edit.perfectWidth = sliderWidget.perfectWidth = -1;
 
                             valueWidget.setLayout(new HorizontalLayout());
@@ -98,16 +89,12 @@ public class ByUILIBConfigGUI extends ConfigGuiTemplate {
                         if (!property.isList()) {
                             boolean initValue = property.getBoolean();
                             ButtonWithTextWidget edit = new ButtonWithTextWidget();
-                            edit.setText(String.valueOf(initValue)).setTextColor((Integer)this.boolColorMap.get(initValue));
+                            edit.setText(String.valueOf(initValue)).setTextColor(this.boolColorMap.get(initValue));
                             edit.setPerfectSize(-1.0F, 32.0F + edit.insideMargins * 2.0F);
                             valueWidget = edit;
                             edit.setCallBack(() -> {
-                                boolean setValue = false;
-                                if (edit.text.equalsIgnoreCase("false")) {
-                                    setValue = true;
-                                } else {
-                                    setValue = false;
-                                }
+                                boolean setValue;
+                                setValue = edit.text.equalsIgnoreCase("false");
 
                                 edit.setText(String.valueOf(setValue)).setTextColor(this.boolColorMap.get(setValue));
                                 edit.perfectWidth = -1.0F;
@@ -153,5 +140,23 @@ public class ByUILIBConfigGUI extends ConfigGuiTemplate {
         }
 
         return configList;
+    }
+
+    private @NotNull IntegerSliderWidget getIntegerSliderWidget(Property property, String title, IntegerEditWidget edit) {
+        IntegerSliderWidget sliderWidget = new IntegerSliderWidget();
+        int maxValue = Integer.parseInt(property.getMaxValue());
+        maxValue = switch (title) {
+            case "bigRadius" -> 128;
+            case "blockLimit" -> 512000;
+            case "smallRadius" -> 8;
+            case "tunnelWidth" -> 16;
+            default -> maxValue;
+        };
+        sliderWidget.setRange(Integer.parseInt(property.getMinValue()), maxValue);
+        sliderWidget.setSliderChangeCallBack((integer) -> {
+            edit.setContent(integer.toString());
+            this.saveOperators.put(title, () -> property.set(integer));
+        });
+        return sliderWidget;
     }
 }
