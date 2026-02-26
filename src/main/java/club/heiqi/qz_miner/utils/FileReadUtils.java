@@ -26,18 +26,24 @@ public class FileReadUtils {
             path = "/" + path;
         }
 
+        InputStream rawStream = FileReadUtils.class.getResourceAsStream(path);
+        if (rawStream == null) {
+            LOG.error("读取文件失败: {}, 资源不存在", path);
+            return "";
+        }
+
         StringBuilder content = new StringBuilder();
         // 使用try-with-resources确保流正确关闭
-        try (InputStream is = FileReadUtils.class.getResourceAsStream(path);
+        try (InputStream is = rawStream;
              BufferedReader reader = new BufferedReader(
-                     new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                      new InputStreamReader(is, StandardCharsets.UTF_8))) {
 
             String line;
             while ((line = reader.readLine()) != null) {
                 content.append(line).append(System.lineSeparator());
             }
-        } catch (IOException | NullPointerException e) {
-            LOG.error("读取文件失败: " + path, e);
+        } catch (IOException e) {
+            LOG.error("读取文件失败: {}", path, e);
             return "";
         }
         return content.toString();
