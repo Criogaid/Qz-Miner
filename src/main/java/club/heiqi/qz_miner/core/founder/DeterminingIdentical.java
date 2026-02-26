@@ -117,14 +117,26 @@ public class DeterminingIdentical {
         }
         Block block = player.worldObj.getBlock(pos.x, pos.y, pos.z);
         int meta = player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
-        boolean matched = isOreLike(block, meta);
-        if (matched) {
+
+        if (isKnownOreLike(block)) {
+            return true;
+        }
+
+        boolean fallbackMatched = isFallbackOreLike(block, meta);
+        if (fallbackMatched) {
             reportUnknownOrePackageOnce(block, player);
         }
-        return matched;
+        return fallbackMatched;
     }
 
     public static boolean isOreLike(Block block, int meta) {
+        if (isKnownOreLike(block)) {
+            return true;
+        }
+        return isFallbackOreLike(block, meta);
+    }
+
+    private static boolean isKnownOreLike(Block block) {
         // 原版矿石
         if (block instanceof BlockOre || block instanceof BlockRedstoneOre) return true;
         // GT/BW/GTPP矿石（不引入 mNatural 限制，保持 QzMiner 连锁语义）
@@ -135,12 +147,14 @@ public class DeterminingIdentical {
         // AE矿石，两个分支独立判断，避免运算符优先级错误
         if (hasAEOreQuartz && block instanceof OreQuartz) return true;
         if (hasAEOreQuartzCharged && block instanceof OreQuartzCharged) return true;
+        return false;
+    }
 
-        boolean matched = ORE_FALLBACK_CACHE.computeIfAbsent(new BlockMetaKey(block, meta), key -> {
+    private static boolean isFallbackOreLike(Block block, int meta) {
+        return ORE_FALLBACK_CACHE.computeIfAbsent(new BlockMetaKey(block, meta), key -> {
             String blockUnlocalizedName = key.block.getUnlocalizedName();
             return blockUnlocalizedName != null && blockUnlocalizedName.toLowerCase().contains("ore");
         });
-        return matched;
     }
 
     public static boolean hasCheck = false;
