@@ -1,5 +1,6 @@
 package club.heiqi.qz_miner.network;
 
+import com.github.bsideup.jabel.Desugar;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
@@ -67,14 +68,8 @@ public class PacketSweepMine implements IMessage {
         return new SweepMinePayload(copy, renderSeconds);
     }
 
-    public static final class SweepMinePayload {
-        public final ArrayList<Vector3i> mines;
-        public final double renderSeconds;
-
-        private SweepMinePayload(ArrayList<Vector3i> mines, double renderSeconds) {
-            this.mines = mines;
-            this.renderSeconds = renderSeconds;
-        }
+    @Desugar
+    public record SweepMinePayload(ArrayList<Vector3i> mines, double renderSeconds) {
     }
 
     public static class PacketSweepMineHandler implements IMessageHandler<PacketSweepMine, IMessage> {

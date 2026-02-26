@@ -1,5 +1,6 @@
 package club.heiqi.qz_miner.lootgame;
 
+import com.github.bsideup.jabel.Desugar;
 import cpw.mods.fml.common.Loader;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
@@ -10,10 +11,7 @@ import org.joml.Vector3i;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * LootGames 扫雷反射兼容层（服务端安全路径）。
@@ -69,7 +67,7 @@ public final class LootGameMineCompat {
         double maxDistanceSq = (double) radius * radius;
 
         ArrayList<BoardCandidate> candidates = collectBoardCandidates(world, player, maxDistanceSq);
-        candidates.sort((a, b) -> Double.compare(a.distanceSq, b.distanceSq));
+        candidates.sort(Comparator.comparingDouble(a -> a.distanceSq));
         for (BoardCandidate candidate : candidates) {
             ArrayList<Vector3i> bombs = findBombsOnBoard(candidate);
             if (!bombs.isEmpty()) {
@@ -116,14 +114,14 @@ public final class LootGameMineCompat {
     private static BoardSnapshot trySnapshot(TileEntity masterTile) {
         try {
             Object game = getGameMethod.invoke(masterTile);
-            if (game == null || !gameMineSweeperClass.isInstance(game)) {
+            if (!gameMineSweeperClass.isInstance(game)) {
                 return null;
             }
             if (isBoardGeneratedMethod != null && !Boolean.TRUE.equals(isBoardGeneratedMethod.invoke(game))) {
                 return null;
             }
             Object board = getBoardMethod.invoke(game);
-            if (board == null || !msBoardClass.isInstance(board)) {
+            if (!msBoardClass.isInstance(board)) {
                 return null;
             }
             Object boardOrigin = getBoardOriginMethod.invoke(game);
@@ -204,38 +202,13 @@ public final class LootGameMineCompat {
         return 0.0D;
     }
 
-    private static final class BoardSnapshot {
-        private final Object board;
-        private final int originX;
-        private final int originY;
-        private final int originZ;
-        private final int boardSize;
-
-        private BoardSnapshot(Object board, int originX, int originY, int originZ, int boardSize) {
-            this.board = board;
-            this.originX = originX;
-            this.originY = originY;
-            this.originZ = originZ;
-            this.boardSize = boardSize;
-        }
+    @Desugar
+    private record BoardSnapshot(Object board, int originX, int originY, int originZ, int boardSize) {
     }
 
-    private static final class BoardCandidate {
-        private final Object board;
-        private final int originX;
-        private final int originY;
-        private final int originZ;
-        private final int boardSize;
-        private final double distanceSq;
-
-        private BoardCandidate(Object board, int originX, int originY, int originZ, int boardSize, double distanceSq) {
-            this.board = board;
-            this.originX = originX;
-            this.originY = originY;
-            this.originZ = originZ;
-            this.boardSize = boardSize;
-            this.distanceSq = distanceSq;
-        }
+    @Desugar
+    private record BoardCandidate(Object board, int originX, int originY, int originZ, int boardSize,
+                                  double distanceSq) {
     }
 
     private static void ensureInitialized() {

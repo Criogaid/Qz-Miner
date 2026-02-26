@@ -1,6 +1,7 @@
 package club.heiqi.qz_miner.client.PreviewRender;
 
 import club.heiqi.qz_miner.utils.ArrayConverter;
+import com.github.bsideup.jabel.Desugar;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Vector2i;
@@ -195,16 +196,8 @@ public class SpaceCalculator {
     }
 
     // 方向配置内部类
-    private static class DirectionConfig {
-        final String dir;
-        final String opposite;
-        final Vector3i offset;
-
-        DirectionConfig(String dir, String opposite, Vector3i offset) {
-            this.dir = dir;
-            this.opposite = opposite;
-            this.offset = offset;
-        }
+    @Desugar
+    private record DirectionConfig(String dir, String opposite, Vector3i offset) {
     }
 
 

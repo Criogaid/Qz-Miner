@@ -35,8 +35,10 @@ public class MineRevealRenderer {
 
     private void consumeSweepMinePackets() {
         if (!Config.enableLootGameMineReveal) {
-            while (PacketSweepMine.pollClientPending() != null) {
+            PacketSweepMine.SweepMinePayload discarded = PacketSweepMine.pollClientPending();
+            while (discarded != null) {
                 // 配置关闭时主动清理积压的网络结果。
+                discarded = PacketSweepMine.pollClientPending();
             }
             revealedMines.clear();
             revealExpireNanos = 0L;
@@ -52,9 +54,9 @@ public class MineRevealRenderer {
             return;
         }
         revealedMines.clear();
-        revealedMines.addAll(latest.mines);
+        revealedMines.addAll(latest.mines());
         long now = System.nanoTime();
-        long renderNanos = resolveRenderNanos(latest.renderSeconds);
+        long renderNanos = resolveRenderNanos(latest.renderSeconds());
         revealExpireNanos = now + renderNanos;
     }
 

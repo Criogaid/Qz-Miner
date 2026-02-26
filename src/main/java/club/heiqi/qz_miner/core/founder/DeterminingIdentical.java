@@ -7,6 +7,7 @@ import bartworks.system.material.BWMetaGeneratedSmallOres;
 import bartworks.system.material.TileEntityMetaGeneratedBlock;
 import club.heiqi.qz_miner.Config;
 import club.heiqi.qz_miner.utils.MessageUtils;
+import com.github.bsideup.jabel.Desugar;
 import gregtech.api.interfaces.tileentity.IGregTechTileEntity;
 import gregtech.common.blocks.BlockOresAbstract;
 import gregtech.common.blocks.TileEntityOres;
@@ -163,28 +164,21 @@ public class DeterminingIdentical {
         );
     }
 
-    private static final class BlockMetaKey {
-        private final Block block;
-        private final int meta;
-
-        private BlockMetaKey(Block block, int meta) {
-            this.block = block;
-            this.meta = meta;
-        }
+    @Desugar
+    private record BlockMetaKey(Block block, int meta) {
 
         @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-            if (!(obj instanceof BlockMetaKey)) return false;
-            BlockMetaKey other = (BlockMetaKey) obj;
-            return this.block == other.block && this.meta == other.meta;
-        }
+            public boolean equals(Object obj) {
+                if (this == obj) return true;
+                if (!(obj instanceof BlockMetaKey other)) return false;
+                return this.block == other.block && this.meta == other.meta;
+            }
 
-        @Override
-        public int hashCode() {
-            return 31 * System.identityHashCode(block) + meta;
+            @Override
+            public int hashCode() {
+                return 31 * System.identityHashCode(block) + meta;
+            }
         }
-    }
 
     @Nullable
     private static TileEntity tryGetTileEntityForMatch(EntityPlayer player, Vector3i pos, boolean safeAsyncGuard) {

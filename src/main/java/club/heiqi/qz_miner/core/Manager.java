@@ -2,6 +2,7 @@ package club.heiqi.qz_miner.core;
 
 import club.heiqi.qz_miner.Config;
 import club.heiqi.qz_miner.utils.PlayerUuidCompat;
+import com.github.bsideup.jabel.Desugar;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -193,36 +194,23 @@ public class Manager {
         existing.stackSize += stack.stackSize;
     }
 
-    private static final class DropKey {
-        private final Item item;
-        private final int itemDamage;
-        private final NBTTagCompound tagSnapshot;
-
-        private DropKey(Item item, int itemDamage, NBTTagCompound tagSnapshot) {
-            this.item = item;
-            this.itemDamage = itemDamage;
-            this.tagSnapshot = tagSnapshot;
-        }
+    @Desugar
+    private record DropKey(Item item, int itemDamage, NBTTagCompound tagSnapshot) {
 
         private static DropKey of(ItemStack stack) {
-            NBTTagCompound tag = stack.getTagCompound();
-            NBTTagCompound tagCopy = tag == null ? null : (NBTTagCompound) tag.copy();
-            return new DropKey(stack.getItem(), stack.getItemDamage(), tagCopy);
-        }
+                NBTTagCompound tag = stack.getTagCompound();
+                NBTTagCompound tagCopy = tag == null ? null : (NBTTagCompound) tag.copy();
+                return new DropKey(stack.getItem(), stack.getItemDamage(), tagCopy);
+            }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (!(o instanceof DropKey)) return false;
-            DropKey dropKey = (DropKey) o;
-            return itemDamage == dropKey.itemDamage
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (!(o instanceof DropKey dropKey)) return false;
+                return itemDamage == dropKey.itemDamage
                     && Objects.equals(item, dropKey.item)
                     && Objects.equals(tagSnapshot, dropKey.tagSnapshot);
-        }
+            }
 
-        @Override
-        public int hashCode() {
-            return Objects.hash(item, itemDamage, tagSnapshot);
-        }
     }
 }
