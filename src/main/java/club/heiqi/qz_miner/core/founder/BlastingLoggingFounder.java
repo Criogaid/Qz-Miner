@@ -8,9 +8,13 @@ import net.minecraft.item.ItemStack;
 import net.minecraftforge.oredict.OreDictionary;
 import org.joml.Vector3i;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class BlastingLoggingFounder extends BasePositionFounder {
+    private static final Map<Block, int[]> ORE_ID_CACHE = new ConcurrentHashMap<>();
+
     public BlastingLoggingFounder(Vector3i center, LinkedBlockingQueue<Vector3i> results, EntityPlayer player, MinerConfig minerConfig) {
         super(center, results, player, minerConfig);
         setName("爆破伐木搜索器");
@@ -95,7 +99,7 @@ public class BlastingLoggingFounder extends BasePositionFounder {
 
         // 检查是否是木头或树叶
         boolean founded = false;
-        int[] oreIDs = OreDictionary.getOreIDs(new ItemStack(block));
+        int[] oreIDs = getOreIds(block);
         for (int oreID : oreIDs) {
             String oreName = OreDictionary.getOreName(oreID);
             if (!oreName.equals("logWood") && !oreName.equals("treeLeaves")) continue;
@@ -106,5 +110,9 @@ public class BlastingLoggingFounder extends BasePositionFounder {
         // 如果是创造模式全都能挖掘
         if (player.capabilities.isCreativeMode) return true;
         return block.canHarvestBlock(player, blockMeta);
+    }
+
+    private static int[] getOreIds(Block block) {
+        return ORE_ID_CACHE.computeIfAbsent(block, key -> OreDictionary.getOreIDs(new ItemStack(key)));
     }
 }
