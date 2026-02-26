@@ -35,10 +35,6 @@ public class DeterminingIdentical {
         DEFER
     }
 
-    public static boolean Identical(Block sBlock, int sMeta, @Nullable TileEntity sTile, Vector3i pos, EntityPlayer player) {
-        return determineIdentical(sBlock, sMeta, sTile, pos, player) == MatchDecision.MATCH;
-    }
-
     public static MatchDecision determineIdentical(
             Block sBlock,
             int sMeta,

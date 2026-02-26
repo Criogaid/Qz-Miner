@@ -132,11 +132,4 @@ public class MinerRenderer {
         // FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
     }
-
-    public void unRegistry() {
-        // FMLCommonHandler.instance().bus().unregister(this);
-        MinecraftForge.EVENT_BUS.unregister(this);
-    }
-
-
 }

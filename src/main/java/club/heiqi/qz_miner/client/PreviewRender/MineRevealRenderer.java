@@ -141,8 +141,4 @@ public class MineRevealRenderer {
     public void registry() {
         MinecraftForge.EVENT_BUS.register(this);
     }
-
-    public void unRegistry() {
-        MinecraftForge.EVENT_BUS.unregister(this);
-    }
 }
