@@ -1,6 +1,7 @@
 package club.heiqi.qz_miner.core;
 
 import club.heiqi.qz_miner.Constant;
+import club.heiqi.qz_miner.Config;
 import club.heiqi.qz_miner.MyMod;
 import club.heiqi.qz_miner.core.founder.BasePositionFounder;
 import club.heiqi.qz_miner.utils.MessageUtils;
@@ -20,7 +21,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class BaseOperator {
     public Logger LOG = LogManager.getLogger();
     private static final String SEARCHER_AUDIT_TAG = "[SearcherAudit]";
-    protected static final int DEFERRED_CHECK_BUDGET_PER_TICK = 48;
 
     public EntityPlayerMP playerMP;
 
@@ -61,6 +61,7 @@ public class BaseOperator {
         }
 
         int breakCountInTick = 0;
+        int breakBudget = getBreakBudgetPerTick();
         Vector3i pos;
         while ((pos = canBreakPositions.poll()) != null) {
             if (!checkCanOperate()) {
@@ -82,7 +83,7 @@ public class BaseOperator {
 
             breakCountInTick++;
             operatorCount++;
-            if (breakCountInTick >= 64) {
+            if (breakCountInTick >= breakBudget) {
                 return;
             }
         }
@@ -108,7 +109,15 @@ public class BaseOperator {
 
     protected void processDeferredBeforeConsume() {
         // 异步阶段延迟的判定请求在主线程限额处理，避免误判并控制卡顿风险。
-        positionFounder.processDeferredPositions(DEFERRED_CHECK_BUDGET_PER_TICK);
+        positionFounder.processDeferredPositions(getDeferredCheckBudgetPerTick());
+    }
+
+    protected int getDeferredCheckBudgetPerTick() {
+        return Math.max(1, Math.min(Config.deferredCheckBudgetPerTick, 512));
+    }
+
+    protected int getBreakBudgetPerTick() {
+        return Math.max(1, Math.min(Config.breakBudgetPerTick, 512));
     }
 
 

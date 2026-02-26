@@ -16,6 +16,8 @@ public class Config {
     public static int blockLimit = 1024;
     public static int smallRadius = 2;
     public static int tunnelWidth = 1;
+    public static int deferredCheckBudgetPerTick = 48;
+    public static int breakBudgetPerTick = 64;
     public static boolean safeAsyncWorldAccess = true;
     public static boolean enableLootGameMineReveal = true;
     public static int lootGameMineRevealScanRadius = 2;
@@ -41,6 +43,22 @@ public class Config {
         blockLimit = config.getInt("blockLimit", Configuration.CATEGORY_GENERAL, 1024, 0, Integer.MAX_VALUE, "最大连锁数量");
         smallRadius = config.getInt("smallRadius", Configuration.CATEGORY_GENERAL, 2, 0, Integer.MAX_VALUE, "连锁 小区域 检测半径");
         tunnelWidth = config.getInt("tunnelWidth", Configuration.CATEGORY_GENERAL, 1, 0, Integer.MAX_VALUE, "隧道半径");
+        deferredCheckBudgetPerTick = config.getInt(
+                "deferredCheckBudgetPerTick",
+                Configuration.CATEGORY_GENERAL,
+                48,
+                1,
+                512,
+                "每tick主线程处理延迟判定请求的预算"
+        );
+        breakBudgetPerTick = config.getInt(
+                "breakBudgetPerTick",
+                Configuration.CATEGORY_GENERAL,
+                64,
+                1,
+                512,
+                "每tick主线程执行连锁动作的预算"
+        );
         safeAsyncWorldAccess = config.getBoolean(
                 "safeAsyncWorldAccess",
                 Configuration.CATEGORY_GENERAL,

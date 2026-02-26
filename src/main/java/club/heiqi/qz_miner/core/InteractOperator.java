@@ -31,6 +31,7 @@ public class InteractOperator extends BaseOperator {
         Vector3d playerPos = new Vector3d(playerMP.posX, playerMP.posY, playerMP.posZ);
 
         int breakCountInTick = 0;
+        int breakBudget = getBreakBudgetPerTick();
         Vector3i pos;
         playerMP.rotationPitch = 90;
         while ((pos = canBreakPositions.poll()) != null) {
@@ -54,7 +55,7 @@ public class InteractOperator extends BaseOperator {
 
             breakCountInTick++;
             operatorCount++;
-            if (breakCountInTick >= 64) {
+            if (breakCountInTick >= breakBudget) {
                 // 还原玩家位置
                 playerMP.posX = playerPos.x; playerMP.posY = playerPos.y; playerMP.posZ = playerPos.z;
                 return;
