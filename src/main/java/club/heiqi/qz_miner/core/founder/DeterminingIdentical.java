@@ -21,11 +21,13 @@ import org.apache.logging.log4j.Logger;
 import org.joml.Vector3i;
 
 import javax.annotation.Nullable;
-import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DeterminingIdentical {
     public static Logger LOG = LogManager.getLogger();
+    private static final Map<BlockMetaKey, Boolean> ORE_FALLBACK_CACHE = new ConcurrentHashMap<>();
 
     public enum MatchDecision {
         MATCH,
@@ -106,7 +108,7 @@ public class DeterminingIdentical {
                 : MatchDecision.NO_MATCH;
     }
 
-    public static Set<String> collectOrePackage = new HashSet<>();
+    public static final Set<String> collectOrePackage = ConcurrentHashMap.newKeySet();
     public static boolean isOreBlock(Vector3i pos, EntityPlayer player) {
         if (!hasCheck) checkCompatibility();
         boolean safeAsyncGuard = Config.safeAsyncWorldAccess && !isServerThread();
@@ -117,42 +119,75 @@ public class DeterminingIdentical {
             return false;
         }
         Block block = player.worldObj.getBlock(pos.x, pos.y, pos.z);
-        // int meta = player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
-        // TileEntity tile = player.worldObj.getTileEntity(pos.x, pos.y, pos.z);
+        int meta = player.worldObj.getBlockMetadata(pos.x, pos.y, pos.z);
+        boolean matched = isOreLike(block, meta);
+        if (matched) {
+            reportUnknownOrePackageOnce(block, player);
+        }
+        return matched;
+    }
 
+    public static boolean isOreLike(Block block, int meta) {
         // 原版矿石
         if (block instanceof BlockOre || block instanceof BlockRedstoneOre) return true;
+        // GT/BW/GTPP矿石（不引入 mNatural 限制，保持 QzMiner 连锁语义）
+        if (hasBlockOresAbstract && block instanceof BlockOresAbstract) return true;
+        if (hasBWMetaGeneratedSmallOres && block instanceof BWMetaGeneratedSmallOres) return true;
+        if (hasBWMetaGeneratedOres && block instanceof BWMetaGeneratedOres) return true;
+        if (hasBlockBaseOre && block instanceof BlockBaseOre) return true;
+        // AE矿石，两个分支独立判断，避免运算符优先级错误
+        if (hasAEOreQuartz && block instanceof OreQuartz) return true;
+        if (hasAEOreQuartzCharged && block instanceof OreQuartzCharged) return true;
 
-        if (hasBlockOresAbstract && block instanceof BlockOresAbstract) return true;                // GT矿石
-        if (hasBWMetaGeneratedSmallOres && block instanceof BWMetaGeneratedSmallOres) return true;  // bart小矿石
-        if (hasBWMetaGeneratedOres && block instanceof BWMetaGeneratedOres) return true;            // bart矿石
-        if (hasBlockBaseOre && block instanceof BlockBaseOre) return true;                          // GTPP矿石
-
-        // AE 矿石
-        if (hasAEOreQuartz && hasAEOreQuartzCharged && block instanceof OreQuartz || block instanceof OreQuartzCharged)
-            return true;
-
-        String blockUnlocalizeName = block.getUnlocalizedName().toLowerCase();
-        String packageName = block.getClass().getTypeName();
-        if (blockUnlocalizeName.contains("ore")) {
-            // 每次游戏 每种未收录的包只提示一次信息
-            if (!collectOrePackage.contains(packageName)) {
-                MessageUtils.sendPlayerMessage(
-                        "发现可能未被收录的矿石类: 【"+ packageName +"】Mod正在测试阶段，发现此消息可上报issue在未来版本逐渐完善后可能消失",
-                        player
-                );
-                collectOrePackage.add(packageName);
-            }
-            return true;
-        }
-
-        return false;
+        boolean matched = ORE_FALLBACK_CACHE.computeIfAbsent(new BlockMetaKey(block, meta), key -> {
+            String blockUnlocalizedName = key.block.getUnlocalizedName();
+            return blockUnlocalizedName != null && blockUnlocalizedName.toLowerCase().contains("ore");
+        });
+        return matched;
     }
 
     public static boolean hasCheck = false;
 
     private static boolean isServerThread() {
-        return Thread.currentThread().getName().toLowerCase().contains("server");
+        String threadName = Thread.currentThread().getName();
+        return threadName.contains("server") || threadName.contains("Server");
+    }
+
+    private static void reportUnknownOrePackageOnce(Block block, EntityPlayer player) {
+        if (!isServerThread()) {
+            return;
+        }
+        String packageName = block.getClass().getTypeName();
+        if (!collectOrePackage.add(packageName)) {
+            return;
+        }
+        MessageUtils.sendPlayerMessage(
+                "发现可能未被收录的矿石类: 【"+ packageName +"】Mod正在测试阶段，发现此消息可上报issue在未来版本逐渐完善后可能消失",
+                player
+        );
+    }
+
+    private static final class BlockMetaKey {
+        private final Block block;
+        private final int meta;
+
+        private BlockMetaKey(Block block, int meta) {
+            this.block = block;
+            this.meta = meta;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (!(obj instanceof BlockMetaKey)) return false;
+            BlockMetaKey other = (BlockMetaKey) obj;
+            return this.block == other.block && this.meta == other.meta;
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * System.identityHashCode(block) + meta;
+        }
     }
 
     @Nullable
