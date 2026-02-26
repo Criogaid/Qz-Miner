@@ -67,6 +67,9 @@ public class BaseOperator {
                 this.unRegistry();
                 return;
             }
+            if (!positionFounder.canHarvestNow(pos)) {
+                continue;
+            }
 
             // 在执行过程中 playerMP.playerNetServerHandler 可能因各种原因变为 null
             try {

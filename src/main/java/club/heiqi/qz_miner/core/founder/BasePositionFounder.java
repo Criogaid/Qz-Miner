@@ -235,6 +235,27 @@ public class BasePositionFounder extends Pauseable {
         return pos.x == playerX && pos.y == (playerY - 1) && pos.z == playerZ;
     }
 
+    /**
+     * 执行阶段的轻量复检（主线程调用）。
+     * 仅做公共安全检查，不包含模式特定匹配逻辑。
+     */
+    public boolean canHarvestNow(Vector3i pos) {
+        if (pos == null) {
+            return false;
+        }
+        if (pos.y < 0 || pos.y >= 256) {
+            return false;
+        }
+        if (!player.worldObj.blockExists(pos.x, pos.y, pos.z)) {
+            return false;
+        }
+        Block block = player.worldObj.getBlock(pos.x, pos.y, pos.z);
+        if (block.equals(Blocks.air) || block.getMaterial().isLiquid() || block.equals(Blocks.bedrock)) {
+            return false;
+        }
+        return !isPlayerFootBlock(pos);
+    }
+
     protected boolean shouldGuardAsyncWorldAccess() {
         return Config.safeAsyncWorldAccess && !isServerThread();
     }

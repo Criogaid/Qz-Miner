@@ -36,6 +36,9 @@ public class InteractOperator extends BaseOperator {
         while ((pos = canBreakPositions.poll()) != null) {
             // 检查是否可以执行交互
             if (!checkCanInteract()) break;
+            if (!positionFounder.canHarvestNow(pos)) {
+                continue;
+            }
             // 将玩家位置设置到该方块位置
             playerMP.posX = pos.x; playerMP.posY = pos.y; playerMP.posZ = pos.z;
 
