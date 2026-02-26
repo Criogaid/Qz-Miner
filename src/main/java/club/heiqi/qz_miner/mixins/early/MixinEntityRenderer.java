@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(EntityRenderer.class)
 public class MixinEntityRenderer {
 
-    @Inject(method = "setupCameraTransform", at = @At("TAIL"), cancellable = false, remap = true)
+    @Inject(method = "setupCameraTransform", at = @At("TAIL"))
     public void hookSetupCameraTransform_Tail(float p_78479_1_, int p_78479_2_, CallbackInfo callbackInfo) {
 
         MatrixUtils.floatBuffer.clear();

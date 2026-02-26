@@ -20,8 +20,7 @@ public class MixinBlock {
             method = "harvestBlock(Lnet/minecraft/world/World;Lnet/minecraft/entity/player/EntityPlayer;IIII)V",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/entity/player/EntityPlayer;addExhaustion(F)V",
-                    remap = true
+                    target = "Lnet/minecraft/entity/player/EntityPlayer;addExhaustion(F)V"
             )
     )
     private void redirectAddExhaustion(EntityPlayer player, float originalExhaustion) {
