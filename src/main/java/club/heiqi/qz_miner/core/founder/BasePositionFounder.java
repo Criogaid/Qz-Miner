@@ -166,7 +166,7 @@ public class BasePositionFounder extends Pauseable {
     }
 
     protected void deferPosition(Vector3i pos) {
-        if (!isSafeToReadAt(pos)) {
+        if (isUnsafeToReadAt(pos)) {
             return;
         }
         Vector3i key = new Vector3i(pos);
@@ -260,26 +260,26 @@ public class BasePositionFounder extends Pauseable {
         return Config.safeAsyncWorldAccess && !isServerThread();
     }
 
-    protected boolean isSafeToReadAt(Vector3i pos) {
+    protected boolean isUnsafeToReadAt(Vector3i pos) {
         if (pos.y < 0 || pos.y >= 256) {
-            return false;
-        }
-        if (!shouldGuardAsyncWorldAccess()) {
             return true;
         }
+        if (!shouldGuardAsyncWorldAccess()) {
+            return false;
+        }
         // 非服务器线程只允许访问已加载区块，避免触发ChunkIO和Tile列表变更。
-        return player.worldObj.blockExists(pos.x, pos.y, pos.z);
+        return !player.worldObj.blockExists(pos.x, pos.y, pos.z);
     }
 
     protected Block getBlockAt(Vector3i pos) {
-        if (!isSafeToReadAt(pos)) {
+        if (isUnsafeToReadAt(pos)) {
             return Blocks.air;
         }
         return getBlockAtUnsafe(pos);
     }
 
     protected int getBlockMetaAt(Vector3i pos) {
-        if (!isSafeToReadAt(pos)) {
+        if (isUnsafeToReadAt(pos)) {
             return 0;
         }
         return getBlockMetaAtUnsafe(pos);
@@ -294,7 +294,7 @@ public class BasePositionFounder extends Pauseable {
     }
 
     protected TileEntity getTileEntityAt(Vector3i pos) {
-        if (!isSafeToReadAt(pos)) {
+        if (isUnsafeToReadAt(pos)) {
             return null;
         }
         if (shouldGuardAsyncWorldAccess()) {
@@ -305,7 +305,7 @@ public class BasePositionFounder extends Pauseable {
     }
 
     protected TileEntity tryGetTileEntityForMatch(Vector3i pos) {
-        if (!isSafeToReadAt(pos)) {
+        if (isUnsafeToReadAt(pos)) {
             return null;
         }
         try {

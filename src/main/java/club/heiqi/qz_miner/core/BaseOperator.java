@@ -68,17 +68,17 @@ public class BaseOperator {
                 this.unRegistry();
                 return;
             }
-            if (!positionFounder.canHarvestNow(pos)) {
+            if (positionFounder.canHarvestNow(pos)) {
+                // 在执行过程中 playerMP.playerNetServerHandler 可能因各种原因变为 null
+                try {
+                    playerMP.theItemInWorldManager.tryHarvestBlock(pos.x, pos.y, pos.z);
+                } catch (Exception e) {
+                    String errorInfo = "尝试采掘方块时出现异常:\n"+e;
+                    LOG.error(errorInfo);
+                    MessageUtils.serverSendPlayerMessage(errorInfo,manager.playerUUID);
+                }
+            } else {
                 continue;
-            }
-
-            // 在执行过程中 playerMP.playerNetServerHandler 可能因各种原因变为 null
-            try {
-                playerMP.theItemInWorldManager.tryHarvestBlock(pos.x, pos.y, pos.z);
-            } catch (Exception e) {
-                String errorInfo = "尝试采掘方块时出现异常:\n"+e;
-                LOG.error(errorInfo);
-                MessageUtils.serverSendPlayerMessage(errorInfo,manager.playerUUID);
             }
 
             breakCountInTick++;

@@ -20,7 +20,7 @@ public class OreBlastingFounder extends BasePositionFounder {
             // LOG.info("重复的点");
             return false;
         }
-        if (!isSafeToReadAt(pos)) {
+        if (isUnsafeToReadAt(pos)) {
             return false;
         }
         Block block = getBlockAt(pos);
