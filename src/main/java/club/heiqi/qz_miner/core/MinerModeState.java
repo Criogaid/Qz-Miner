@@ -58,14 +58,30 @@ public class MinerModeState {
         return mainMode == 0 || mainMode == 1;
     }
 
+    private static int nextIndex(int current, String[] modes) {
+        int length = modes.length;
+        if (length <= 1) {
+            return 0;
+        }
+        return (current + 1) % length;
+    }
+
+    private static int previousIndex(int current, String[] modes) {
+        int length = modes.length;
+        if (length <= 1) {
+            return 0;
+        }
+        return (current - 1 + length) % length;
+    }
+
     // ========== 主模式 ==========
     public String nextMainMode() {
-        mainMode = (mainMode + 1) % MAIN_MODE.length;
+        mainMode = nextIndex(mainMode, MAIN_MODE);
         return currentMainMode();
     }
 
     public String previousMainMode() {
-        mainMode = (mainMode - 1 + MAIN_MODE.length) % MAIN_MODE.length; // 修复负索引问题
+        mainMode = previousIndex(mainMode, MAIN_MODE);
         return currentMainMode();
     }
 
@@ -127,12 +143,12 @@ public class MinerModeState {
 
     // ========== 范围模式 ==========
     public String nextRangeMode() {
-        rangeMode = (rangeMode + 1) % RANGE_MODE.length;
+        rangeMode = nextIndex(rangeMode, RANGE_MODE);
         return currentRangeMode();
     }
 
     public String previousRangeMode() {
-        rangeMode = (rangeMode - 1 + RANGE_MODE.length) % RANGE_MODE.length; // 修复负索引问题
+        rangeMode = previousIndex(rangeMode, RANGE_MODE);
         return currentRangeMode();
     }
 
@@ -142,12 +158,12 @@ public class MinerModeState {
 
     // ========== 连锁模式 ==========
     public String nextChainMode() {
-        chainMode = (chainMode + 1) % CHAIN_MODE.length;
+        chainMode = nextIndex(chainMode, CHAIN_MODE);
         return currentChainMode();
     }
 
     public String previousChainMode() {
-        chainMode = (chainMode - 1 + CHAIN_MODE.length) % CHAIN_MODE.length; // 修复负索引问题
+        chainMode = previousIndex(chainMode, CHAIN_MODE);
         return currentChainMode();
     }
 
@@ -157,13 +173,13 @@ public class MinerModeState {
 
     // ========== 交互模式 ==========
     public String nextInteractMode() {
-        interactMode = (interactMode + 1) % INTERACT_MODE.length;
-        return currentChainMode();
+        interactMode = nextIndex(interactMode, INTERACT_MODE);
+        return currentInteractMode();
     }
 
     public String previousInteractMode() {
-        interactMode = (interactMode - 1 + INTERACT_MODE.length) % INTERACT_MODE.length; // 修复负索引问题
-        return currentChainMode();
+        interactMode = previousIndex(interactMode, INTERACT_MODE);
+        return currentInteractMode();
     }
 
     public String currentInteractMode() {
@@ -172,12 +188,12 @@ public class MinerModeState {
 
     // ========== 扫雷模式 ==========
     public String nextMineRevealMode() {
-        mineRevealMode = (mineRevealMode + 1) % MINE_REVEAL_MODE.length;
+        mineRevealMode = nextIndex(mineRevealMode, MINE_REVEAL_MODE);
         return currentMineRevealMode();
     }
 
     public String previousMineRevealMode() {
-        mineRevealMode = (mineRevealMode - 1 + MINE_REVEAL_MODE.length) % MINE_REVEAL_MODE.length;
+        mineRevealMode = previousIndex(mineRevealMode, MINE_REVEAL_MODE);
         return currentMineRevealMode();
     }
 
